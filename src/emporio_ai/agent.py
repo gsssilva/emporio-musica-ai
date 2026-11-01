@@ -258,8 +258,8 @@ class CustomerAgent:
                     selected_ids.append(product_source)
                 trace.append({"tool": "inventory_consistency_guard", "ok": True, "trigger": "business_rule"})
         warranty = sources.get("policy:8.1", {})
-        if any(word in intent for word in ("defeit", "garantia")) and "90" in warranty.get("text", "") and "90" not in answer:
-            answer += " O manual também informa garantia de 90 dias contados do recebimento. Confirme com a equipe a data real de recebimento e a análise do seu caso antes de concluir sobre a cobertura."
+        if any(word in intent for word in ("defeit", "garantia")) and "90" in warranty.get("text", "") and ("90" not in answer or "receb" not in normalize(answer)):
+            answer = "O manual descreve troca por defeito em até 30 dias da compra e também garantia legal de 90 dias contados do recebimento real. Ultrapassar o procedimento de troca não basta para negar a garantia. Em que data você recebeu o instrumento e qual defeito apresentou? A equipe deve analisar o caso e orientar o atendimento, inclusive a intermediação com o fabricante quando aplicável, sem aprovação ou negativa automática pelo chat."
             kind = "needs_human"
             if "policy:8.1" not in selected_ids:
                 selected_ids.append("policy:8.1")

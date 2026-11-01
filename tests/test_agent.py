@@ -245,3 +245,11 @@ class AgentTests(ToolFixture):
         self.assertIn("online ou presencial", result["answer"])
         self.assertIn("em que data", result["answer"])
         self.assertNotIn("está aprovada", result["answer"])
+
+    def test_warranty_requires_actual_receipt_even_when_model_mentions_ninety_days(self):
+        provider = ScriptedProvider([{"role": "assistant", "content": "draft"},
+                                     final("A garantia de 90 dias vale desde a compra.", ["policy:4.2", "policy:8.1"])])
+        result = CustomerAgent(provider, self.registry).respond("O instrumento veio com defeito após 35 dias da compra.")
+        self.assertIn("recebimento real", result["answer"])
+        self.assertNotIn("vale desde a compra", result["answer"])
+        self.assertEqual(result["kind"], "needs_human")
