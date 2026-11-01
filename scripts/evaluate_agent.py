@@ -51,6 +51,11 @@ def check_result(case: dict, result: dict, store: StoreQueries) -> dict[str, boo
         cents = quote["total_cents"]
         expected = f"{cents // 100:,}".replace(",", ".") + f",{cents % 100:02d}"
         checks["calculated_total_present"] = expected in result["answer"]
+    if case["id"] == "regret":
+        checks["channel_and_receipt_requested"] = "online ou presencial" in answer and "em que data" in answer
+        checks["no_eligibility_assumption"] = "esta dentro do prazo" not in answer
+    if case["id"] == "pix_promotion":
+        checks["no_stacked_discount_explanation"] = "nao foi aplicado" in answer and "nao sao cumulativos" in answer
     return checks
 
 

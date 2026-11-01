@@ -226,3 +226,22 @@ class AgentTests(ToolFixture):
         for message in ["", "x" * 2001]:
             with self.assertRaises(ValueError):
                 CustomerAgent(provider, self.registry).respond(message)
+
+    def test_pix_explanation_cannot_claim_stacked_discounts(self):
+        provider = ScriptedProvider([tool_call("quote_payment", {"product_id": 81, "method": "pix"}),
+                                     {"role": "assistant", "content": "draft"},
+                                     final("O valor inclui promoção e desconto PIX somados.", ["catalog:81"])])
+        result = CustomerAgent(provider, self.registry).respond("Quanto fica o produto 81 no PIX?")
+        self.assertIn("89,59", result["answer"])
+        self.assertIn("não foi aplicado", result["answer"])
+        self.assertNotIn("somados", result["answer"])
+        self.assertEqual(result["generation_mode"], "llm_with_business_guards")
+
+    def test_return_does_not_assume_online_purchase_or_receipt_date(self):
+        provider = ScriptedProvider([{"role": "assistant", "content": "draft"},
+                                     final("Sim, está dentro do prazo e a devolução está aprovada.", ["policy:4.1"])])
+        result = CustomerAgent(provider, self.registry).respond("Me arrependi da compra. Posso devolver?")
+        self.assertEqual(result["kind"], "clarification")
+        self.assertIn("online ou presencial", result["answer"])
+        self.assertIn("em que data", result["answer"])
+        self.assertNotIn("está aprovada", result["answer"])

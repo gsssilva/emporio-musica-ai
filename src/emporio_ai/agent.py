@@ -53,6 +53,7 @@ class CustomerAgent:
         sources, trace, usage = {}, [], {"input_tokens": 0, "output_tokens": 0}
         calls_count, requires_confirmation = 0, False
         product_facts, order_facts, consulted_products = {}, [], set()
+        quote_facts = []
         alternatives_lookup_done = False
         intent = normalize(message)
         policy_topics = ("horar", "endereco", "devol", "arrepend", "troca", "garantia", "defeit", "frete", "pagamento", "parcel", "pix", "desconto", "acessor", "whatsapp", "telefone", "privacidade")
@@ -152,6 +153,8 @@ class CustomerAgent:
                             product_facts[product["product_id"]] = product
                     if name == "get_order_status":
                         order_facts.append(result["data"]["order"])
+                    if name == "quote_payment":
+                        quote_facts.append(result["data"])
                     if name == "quote_payment" and result["data"]["quote"]["status"] == "needs_confirmation":
                         requires_confirmation = True
                 messages.append({"role": "tool", "tool_name": name,
@@ -261,5 +264,27 @@ class CustomerAgent:
             if "policy:8.1" not in selected_ids:
                 selected_ids.append("policy:8.1")
             trace.append({"tool": "warranty_context_guard", "ok": True, "trigger": "business_rule"})
+        # Monetary explanations must agree with the exact quote, including discount provenance.
+        pix_quotes = [fact for fact in quote_facts if fact["quote"]["method"] == "pix"]
+        if "pix" in intent and pix_quotes and len(quote_facts) == 1:
+            fact, quote = pix_quotes[0], pix_quotes[0]["quote"]
+            cents = quote["total_cents"]
+            amount = f"{cents // 100:,}".replace(",", ".") + f",{cents % 100:02d}"
+            answer = f"Para {fact['product_name']}, o total consultado no PIX é R$ {amount}. "
+            if quote["promotion_bps"]:
+                answer += "Esse valor inclui a promoção ativa. O desconto adicional de 5% do PIX não foi aplicado, porque os descontos não são cumulativos."
+            elif quote["pix_discount_applied"]:
+                answer += "Esse valor inclui o desconto de 5% do PIX sobre o preço de tabela, sem promoção cumulativa."
+            else:
+                answer += "Não foi aplicado desconto adicional de PIX nessa cotação."
+            kind = "grounded"
+            selected_ids = list(sources)
+            trace.append({"tool": "quote_consistency_guard", "ok": True, "trigger": "business_rule"})
+        # Neither the chat nor the snapshot establishes actual receipt or purchase channel.
+        if any(term in intent for term in ("arrepend", "devol")) and not any(term in intent for term in ("defeit", "garantia")) and "policy:4.1" in sources:
+            answer = "Segundo o manual, a devolução por arrependimento em compras online pode ser solicitada em até 7 dias corridos após o recebimento real. A compra foi online ou presencial e em que data você recebeu o produto? Preciso dessas informações para orientar seu caso; a previsão de entrega não comprova recebimento. A equipe deve confirmar a elegibilidade e conduzir a solicitação, sem aprovação automática pelo chat."
+            kind = "clarification"
+            selected_ids = list(sources)
+            trace.append({"tool": "return_context_guard", "ok": True, "trigger": "business_rule"})
         selected = [sources[source_id] for source_id in selected_ids]
         return finish(answer, selected, kind, "completed")
