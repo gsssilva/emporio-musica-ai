@@ -4,7 +4,7 @@ Projeto do desafio técnico de AI Engineer da Artefact: um agente em Python para
 
 ## Estado atual
 
-Ingestão, consultas estruturadas e condições comerciais implementadas: pacote Python instalável, banco SQLite e 38 testes automatizados. A API de catálogo e a interface local estão disponíveis. **O chat com LLM ainda não está implementado.**
+Ingestão, consultas estruturadas, condições comerciais e recuperação das políticas implementadas: pacote Python instalável, banco SQLite e 49 testes automatizados. A API de catálogo e a interface local estão disponíveis. **O chat com LLM ainda não está implementado.**
 
 Entrega informada: terça-feira, 03/11/2026. O horário limite deve ser conferido no e-mail do processo seletivo.
 
@@ -15,6 +15,7 @@ Entrega informada: terça-feira, 03/11/2026. O horário limite deve ser conferid
 - [Etapas, critérios de aceite e commits](docs/plano.md)
 - [Relatório reproduzível dos CSVs](docs/auditoria-dados.json)
 - [Consultas e condições comerciais](docs/consultas.md)
+- [Recuperação das políticas](docs/retrieval.md)
 
 ## Configurar e executar
 
@@ -26,6 +27,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e . --no-deps
 .\.venv\Scripts\python.exe -m emporio_ai check-data
 .\.venv\Scripts\python.exe -m emporio_ai ingest
+.\.venv\Scripts\python.exe -m emporio_ai index-policies
 ```
 
 A validação e a ingestão usam apenas a biblioteca padrão, sem chave de API ou acesso à rede. A instalação pode acessar o índice de pacotes para obter as ferramentas de build. O banco gerado fica em `runtime/emporio.sqlite3` e não deve ser versionado.

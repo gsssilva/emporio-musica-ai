@@ -10,6 +10,7 @@ from pathlib import Path
 
 from emporio_ai.source_data import DataValidationError, load_snapshot
 from emporio_ai.storage import ingest
+from emporio_ai.policies import index_policies
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -20,14 +21,19 @@ def main(argv: list[str] | None = None) -> int:
     ingest_parser.add_argument("--database", type=Path, default=Path("runtime/emporio.sqlite3"))
     check_parser = subparsers.add_parser("check-data", help="Validar CSVs sem criar um banco")
     check_parser.add_argument("--data-dir", type=Path, default=Path("data"))
+    policy_parser = subparsers.add_parser("index-policies", help="Indexar o manual por seção e página")
+    policy_parser.add_argument("--pdf", type=Path, default=Path("data/políticas_da_loja.pdf"))
+    policy_parser.add_argument("--database", type=Path, default=Path("runtime/policies.sqlite3"))
     args = parser.parse_args(argv)
     try:
         if args.command == "ingest":
             result = ingest(args.data_dir, args.database)
+        elif args.command == "index-policies":
+            result = index_policies(args.pdf, args.database)
         else:
             snapshot = load_snapshot(args.data_dir)
             result = {"row_counts": snapshot.row_counts, "source_manifest": snapshot.manifest}
-    except DataValidationError as error:
+    except (DataValidationError, ValueError) as error:
         print(json.dumps({"error": str(error)}, ensure_ascii=False), file=sys.stderr)
         return 1
     except (sqlite3.Error, OSError):
