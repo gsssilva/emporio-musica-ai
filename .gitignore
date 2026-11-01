@@ -1,0 +1,29 @@
+# Credenciais e configuração local
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Dados gerados, conversas e arquivos temporários
+tmp/
+runtime/
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
+# Ferramentas locais
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
