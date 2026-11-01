@@ -4,7 +4,7 @@ Projeto do desafio técnico de AI Engineer da Artefact: um agente em Python para
 
 ## Estado atual
 
-Descoberta e ingestão concluídas: seis CSVs auditados, pacote Python instalável e carga transacional no SQLite, com 17 testes automatizados. **O agente com LLM, a API e a interface ainda não estão implementados.**
+Ingestão, consultas estruturadas e condições comerciais implementadas: pacote Python instalável, banco SQLite e 31 testes automatizados. **O agente com LLM, a API e a interface ainda não estão implementados.**
 
 Entrega informada: terça-feira, 03/11/2026. O horário limite deve ser conferido no e-mail do processo seletivo.
 
@@ -14,6 +14,7 @@ Entrega informada: terça-feira, 03/11/2026. O horário limite deve ser conferid
 - [Arquitetura e decisões propostas](docs/arquitetura.md)
 - [Etapas, critérios de aceite e commits](docs/plano.md)
 - [Relatório reproduzível dos CSVs](docs/auditoria-dados.json)
+- [Consultas e condições comerciais](docs/consultas.md)
 
 ## Configurar e executar
 
@@ -88,7 +89,7 @@ Cada etapa deve produzir uma alteração funcional ou documental verificável an
 
 ## Uso de assistência de IA
 
-O Codex foi utilizado na leitura dos materiais, auditoria dos CSVs, levantamento de ambiguidades, proposta técnica, implementação da ingestão e elaboração/execução dos testes. O usuário orienta o desenvolvimento e autorizou a execução dos commits pelo assistente. Este registro será atualizado nas etapas seguintes. O candidato deve revisar as alterações e compreender as decisões para explicá-las na avaliação.
+O Codex foi utilizado na leitura dos materiais, auditoria dos CSVs, levantamento de ambiguidades, proposta técnica, implementação da ingestão, consultas de atendimento, condições comerciais e elaboração/execução dos testes. O usuário orienta o desenvolvimento e autorizou a execução dos commits pelo assistente. Este registro será atualizado nas etapas seguintes. O candidato deve revisar as alterações e compreender as decisões para explicá-las na avaliação.
 
 ## Limitações atuais e entrega
 

@@ -12,7 +12,7 @@ O assistente prepara alterações, explica decisões, verifica resultados e exec
 | --- | --- | --- | --- |
 | 1 | Descoberta e auditoria | Fontes lidas; relatório reproduzido; decisões documentadas | `docs: map challenge requirements and audit source data` |
 | 2 | Base Python e ingestão | Ambiente reproduzível; carga transacional; validação de dados | `feat: add validated SQLite ingestion` |
-| 3 | Domínio e ferramentas | Catálogo, promoções e pedidos autorizados; testes de regras | `feat: implement catalog and order tools` |
+| 3 | Domínio e ferramentas | Catálogo, promoções e pedidos autorizados; testes de regras | `feat: add read-only store queries and payment rules` |
 | 4 | Retrieval das políticas | Seções com origem; consultas avaliadas; lacunas identificadas | `feat: add policy retrieval with source references` |
 | 5 | Agente com LLM | Chamadas de ferramentas reais; limites, erros e sessões testados | `feat: integrate tool-calling customer service agent` |
 | 6 | API e chat | Fluxo do usuário funcionando de ponta a ponta | `feat: expose chat API and demo interface` |
@@ -48,7 +48,7 @@ Cinco conversas, capturadas após execução: busca de catálogo; preço/promoç
 
 ## Preparação do repositório
 
-A raiz local é `C:\Users\gsssi\Documents\Projects\emporio-musica-ai`. Git está disponível no runtime do ambiente, embora não esteja no PATH do terminal atual. O repositório local será inicializado sem commits; nenhum remoto GitHub foi configurado. O plugin GitHub está instalado; suas ferramentas ainda não estão disponíveis nesta execução. O usuário autorizou a criação do repositório público e os commits.
+A raiz local é `C:\Users\gsssi\Documents\Projects\emporio-musica-ai`. Git está disponível no runtime do ambiente, embora não esteja no PATH do terminal atual. O repositório local está inicializado e conectado ao remoto `https://github.com/gsssilva/emporio-musica-ai.git`. Autenticação Git e acesso MCP foram verificados. O usuário autorizou commits e publicação nesse repositório.
 
 Preparar um repositório remoto vazio para evitar conflito com um README inicial remoto. Antes do primeiro commit, conferir `git status`, revisar o conteúdo e selecionar explicitamente os arquivos. O primeiro marco disponível reúne descoberta e ingestão: documentação, fontes fornecidas, pacote Python, CLI e testes. Mensagem sugerida: `feat: initialize project with validated data ingestion`. Os próximos commits devem seguir as funcionalidades efetivamente desenvolvidas.
 

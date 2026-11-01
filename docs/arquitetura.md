@@ -1,6 +1,6 @@
 # Arquitetura proposta
 
-Status: pacote Python, validação dos CSVs e ingestão transacional implementados. Agente, ferramentas de atendimento, retrieval, API e chat seguem como proposta. Detalhes da etapa disponível em [ingestão](ingestao.md).
+Status: pacote Python, ingestão transacional, consultas de catálogo/pedidos e cálculos comerciais implementados. Integração dessas consultas como ferramentas do LLM, retrieval, API e chat seguem como proposta. Detalhes da etapa disponível em [ingestão](ingestao.md).
 
 ## Abordagem
 
