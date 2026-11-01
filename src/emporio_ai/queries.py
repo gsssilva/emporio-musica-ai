@@ -6,6 +6,8 @@ import json
 import re
 import sqlite3
 import unicodedata
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
 from contextlib import closing
 from pathlib import Path
 
@@ -166,4 +168,7 @@ class StoreQueries:
             order["items"] = [dict(item) for item in items]
             order["actual_received_at"] = None
             order["purchase_channel"] = None
+            today = datetime.now(ZoneInfo("America/Campo_Grande")).date()
+            estimate = order["estimated_delivery"]
+            order["estimated_delivery_is_past"] = bool(estimate and date.fromisoformat(estimate) < today and order["status"] != "delivered")
             return {"order": order, "source": self._source(connection)}

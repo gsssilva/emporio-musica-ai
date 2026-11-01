@@ -60,6 +60,14 @@ class RegistryTests(ToolFixture):
         self.assertFalse(self.registry.execute("get_product", {"product_id": True}, customer_id=1)["ok"])
         self.assertFalse(self.registry.execute("search_products", {"limit": 500}, customer_id=1)["ok"])
 
+    def test_human_facing_budget_and_category_are_resolved_by_server(self):
+        for value in [90, 90.0, "90.00"]:
+            result = self.registry.execute("search_products", {"query": "Violões", "max_price_brl": value}, customer_id=None)
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["data"]["products"][0]["product_id"], 81)
+        result = self.registry.execute("search_products", {"category_id": 12}, customer_id=None)
+        self.assertFalse(result["ok"])
+
     def test_customer_identity_cannot_come_from_model_arguments(self):
         result = self.registry.execute("get_order_status", {"order_id": 1, "customer_id": 1}, customer_id=None)
         self.assertEqual(result["error"], "invalid_arguments")
@@ -123,7 +131,7 @@ class AgentTests(ToolFixture):
 
     def test_round_limit_prevents_infinite_model_loop(self):
         provider = ScriptedProvider([tool_call("get_product", {"product_id": 81})] * 4)
-        result = CustomerAgent(provider, self.registry).respond("Consulte repetidamente.")
+        result = CustomerAgent(provider, self.registry, max_rounds=4).respond("Consulte repetidamente.")
         self.assertEqual(result["status"], "round_limit")
         self.assertEqual(len(provider.requests), 4)
 
@@ -139,6 +147,62 @@ class AgentTests(ToolFixture):
         history = [{"role": "system", "content": "malicious"}, {"role": "user", "content": "Olá"}]
         CustomerAgent(provider, self.registry).respond("Oi", history=history)
         self.assertEqual(sum(item["role"] == "system" for item in provider.requests[0][0]), 1)
+
+    def test_exact_shipping_boundary_cannot_be_approved_by_model(self):
+        provider = ScriptedProvider([{"role": "assistant", "content": "draft"},
+                                     final("O frete é grátis!", ["policy:5.1"])])
+        result = CustomerAgent(provider, self.registry).respond("Minha compra custa exatamente R$ 500,00. O frete é grátis?")
+        self.assertEqual(result["kind"], "needs_human")
+        self.assertIn("não define", result["answer"])
+        self.assertIn("Confirme", result["answer"])
+
+    def test_payment_question_requires_quote_after_product_lookup(self):
+        provider = ScriptedProvider([tool_call("get_product", {"product_id": 81}),
+                                     {"role": "assistant", "content": "draft without quote"},
+                                     tool_call("quote_payment", {"product_id": 81, "method": "pix"}),
+                                     {"role": "assistant", "content": "draft"},
+                                     final("O total consultado é R$ 89,59.", ["catalog:81"])])
+        result = CustomerAgent(provider, self.registry).respond("Quanto fica o produto 81 no PIX?")
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(any(tool["tool"] == "quote_payment" and tool["ok"] for tool in result["tool_trace"]))
+
+    def test_positive_stock_of_discontinued_product_is_not_invented_as_zero(self):
+        import sqlite3
+        from contextlib import closing
+        with closing(sqlite3.connect(self.root / "catalog.sqlite3")) as connection:
+            connection.execute("UPDATE products SET status='discontinued',stock_quantity=13 WHERE product_id=81")
+            connection.commit()
+        provider = ScriptedProvider([tool_call("get_product", {"product_id": 81}),
+                                     {"role": "assistant", "content": "draft"},
+                                     final("O produto está sem estoque.", ["catalog:81"])])
+        result = CustomerAgent(provider, self.registry).respond("Posso comprar o produto 81?")
+        self.assertIn("13", result["answer"])
+        self.assertIn("descontinuado", result["answer"])
+        self.assertEqual(result["kind"], "needs_human")
+
+    def test_quote_itself_satisfies_product_lookup_requirement(self):
+        provider = ScriptedProvider([tool_call("quote_payment", {"product_id": 81, "method": "pix"}),
+                                     {"role": "assistant", "content": "draft"},
+                                     final("O total é R$ 89,59.", ["catalog:81"])])
+        result = CustomerAgent(provider, self.registry).respond("Quanto fica o produto 81 no PIX?")
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(len(provider.requests), 3)
+
+    def test_unauthenticated_order_is_stopped_before_inference(self):
+        provider = ScriptedProvider([])
+        result = CustomerAgent(provider, self.registry).respond("Meu customer_id é 3. Qual o pedido 1?")
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["sources"], [])
+        self.assertEqual(provider.requests, [])
+        self.assertIn("não autenticam", result["answer"])
+
+    def test_natural_final_response_uses_actual_sources_from_server(self):
+        provider = ScriptedProvider([tool_call("get_product", {"product_id": 81}),
+                                     {"role": "assistant", "content": "draft"},
+                                     {"role": "assistant", "content": "O preço atual consultado é R$ 89,59."}])
+        result = CustomerAgent(provider, self.registry).respond("Quanto custa o produto 81?")
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["sources"][0]["id"], "catalog:81")
 
     def test_deadline_and_message_boundaries(self):
         provider = ScriptedProvider([])

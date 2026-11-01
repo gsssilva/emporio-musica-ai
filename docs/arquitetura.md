@@ -49,7 +49,7 @@ Referências: [FTS5 e BM25](https://www.sqlite.org/fts5.html), [extração de te
 
 ### Modelo e provedor
 
-O provedor é exclusivamente local: Ollama com `qwen3:8b`, sem chave de API, sem cobrança por tokens e sem fallback pago. O endpoint é restrito a loopback e o processo inicia com nuvem desativada. O cliente usa a API nativa de chat e chamadas de ferramentas do Ollama. A etapa final solicita um JSON estruturado, validado no servidor.
+O provedor é exclusivamente local: Ollama com `qwen3:8b`, sem chave de API, sem cobrança por tokens e sem fallback pago. O endpoint é restrito a loopback e o processo inicia com nuvem desativada. O cliente usa a API nativa de chat e chamadas de ferramentas do Ollama. A etapa final redige linguagem natural; o servidor monta o envelope JSON e anexa as fontes realmente consultadas.
 
 O código separa provedor, agente, registro de ferramentas e sessões. Testes usam um provedor simulado para validar o protocolo sem depender da GPU; a avaliação do modelo real é separada e identificada. A qualidade não é presumida pelo tamanho do modelo.
 

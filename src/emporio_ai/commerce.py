@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation, localcontext
+
 
 class PaymentRuleError(ValueError):
     pass
@@ -54,3 +56,23 @@ def quote_payment(
             if needs_confirmation else None
         ),
     }
+
+
+def brl_to_cents(value: int | float | str) -> int:
+    if type(value) not in {int, float, str} or len(str(value)) > 64:
+        raise ValueError("Orçamento inválido.")
+    try:
+        number = Decimal(str(value))
+        if not number.is_finite() or number < 0:
+            raise ValueError("Orçamento inválido.")
+        with localcontext() as context:
+            context.prec = 70
+            rounded = number.quantize(Decimal("0.01"))
+            if rounded != number:
+                raise ValueError("Orçamento deve ter no máximo duas casas decimais significativas.")
+            scaled = rounded * 100
+        if scaled != scaled.to_integral_value() or scaled > 2**63 - 1:
+            raise ValueError("Orçamento deve ser representável em centavos.")
+        return int(scaled)
+    except InvalidOperation:
+        raise ValueError("Orçamento inválido.") from None
