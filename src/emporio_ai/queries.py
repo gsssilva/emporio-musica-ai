@@ -118,6 +118,11 @@ class StoreQueries:
             return {"products": matches[:limit], "matched_count": len(matches),
                     "truncated": len(matches) > limit, "source": self._source(connection)}
 
+    def list_categories(self) -> dict:
+        with closing(self._connect()) as connection:
+            categories = connection.execute("SELECT category_id,name FROM categories ORDER BY category_id").fetchall()
+            return {"categories": [dict(row) for row in categories], "source": self._source(connection)}
+
     def get_product(self, product_id: int) -> dict:
         _positive_integer(product_id)
         with closing(self._connect()) as connection:

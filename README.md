@@ -4,7 +4,7 @@ Projeto do desafio técnico de AI Engineer da Artefact: um agente em Python para
 
 ## Estado atual
 
-Ingestão, consultas estruturadas e condições comerciais implementadas: pacote Python instalável, banco SQLite e 31 testes automatizados. **O agente com LLM, a API e a interface ainda não estão implementados.**
+Ingestão, consultas estruturadas e condições comerciais implementadas: pacote Python instalável, banco SQLite e 38 testes automatizados. A API de catálogo e a interface local estão disponíveis. **O chat com LLM ainda não está implementado.**
 
 Entrega informada: terça-feira, 03/11/2026. O horário limite deve ser conferido no e-mail do processo seletivo.
 
@@ -22,7 +22,8 @@ Requer Python 3.11 ou superior com `pip` e `venv`. Abra o terminal na raiz deste
 
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe -m pip install -r requirements.lock
+.\.venv\Scripts\python.exe -m pip install -e . --no-deps
 .\.venv\Scripts\python.exe -m emporio_ai check-data
 .\.venv\Scripts\python.exe -m emporio_ai ingest
 ```
@@ -34,6 +35,18 @@ Os caminhos padrão `data/` e `runtime/` são relativos ao diretório do termina
 ```powershell
 .\.venv\Scripts\python.exe -m emporio_ai ingest --data-dir data --database runtime/emporio.sqlite3
 ```
+
+### Interface local
+
+Depois da ingestão, execute na raiz do projeto:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn emporio_ai.api:app --host 127.0.0.1 --port 8000
+```
+
+Abra [a interface local](http://127.0.0.1:8000) ou [a documentação da API](http://127.0.0.1:8000/docs). A interface permite buscar instrumentos disponíveis, filtrar por categoria e orçamento e consultar condições de pagamento. É uma prévia funcional do catálogo; não há chat com LLM nesta versão. Para encerrar o servidor no terminal, use Ctrl+C.
+
+Detalhes em [API e interface local](docs/api-local.md).
 
 ### Testes
 
@@ -81,7 +94,7 @@ emporio-musica-ai/
 - Modelo inicial proposto: `gpt-6.1-sol`, configurável por ambiente. A escolha será validada com os cenários do projeto e com o acesso disponível na conta.
 - Testes locais sem credenciais e avaliação separada com o modelo real.
 
-Os comandos do agente e da interface serão adicionados quando esses componentes estiverem implementados. O modelo ainda não foi chamado nem avaliado neste projeto.
+O comando do agente será adicionado quando a integração com LLM estiver implementada. O modelo ainda não foi chamado nem avaliado neste projeto.
 
 ## Histórico de desenvolvimento
 
@@ -89,7 +102,7 @@ Cada etapa deve produzir uma alteração funcional ou documental verificável an
 
 ## Uso de assistência de IA
 
-O Codex foi utilizado na leitura dos materiais, auditoria dos CSVs, levantamento de ambiguidades, proposta técnica, implementação da ingestão, consultas de atendimento, condições comerciais e elaboração/execução dos testes. O usuário orienta o desenvolvimento e autorizou a execução dos commits pelo assistente. Este registro será atualizado nas etapas seguintes. O candidato deve revisar as alterações e compreender as decisões para explicá-las na avaliação.
+O Codex foi utilizado na leitura dos materiais, auditoria dos CSVs, levantamento de ambiguidades, proposta técnica, implementação da ingestão, consultas de atendimento, condições comerciais, API, interface local e elaboração/execução dos testes. O usuário orienta o desenvolvimento e autorizou a execução dos commits pelo assistente. Este registro será atualizado nas etapas seguintes. O candidato deve revisar as alterações e compreender as decisões para explicá-las na avaliação.
 
 ## Limitações atuais e entrega
 
