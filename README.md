@@ -4,7 +4,7 @@ Projeto do desafio técnico de AI Engineer da Artefact: um agente em Python para
 
 ## Estado atual
 
-Ingestão, consultas estruturadas, condições comerciais e recuperação das políticas implementadas: pacote Python instalável, banco SQLite e 49 testes automatizados. A API de catálogo e a interface local estão disponíveis. **O chat com LLM ainda não está implementado.**
+Ingestão, consultas estruturadas, condições comerciais e recuperação das políticas implementadas: pacote Python instalável, banco SQLite e 78 testes automatizados. O agente local com ferramentas e o endpoint `/chat` estão implementados e possuem testes de integração. A avaliação ampliada com o modelo real está em preparação.
 
 Entrega informada: terça-feira, 03/11/2026. O horário limite deve ser conferido no e-mail do processo seletivo.
 
@@ -16,6 +16,7 @@ Entrega informada: terça-feira, 03/11/2026. O horário limite deve ser conferid
 - [Relatório reproduzível dos CSVs](docs/auditoria-dados.json)
 - [Consultas e condições comerciais](docs/consultas.md)
 - [Recuperação das políticas](docs/retrieval.md)
+- [Agente local e sessões](docs/agente.md)
 
 ## Configurar e executar
 
@@ -93,10 +94,10 @@ emporio-musica-ai/
 - SQLite para dados estruturados, consultas parametrizadas e histórico isolado por sessão.
 - Busca textual nas políticas com referências à página e seção de origem.
 - LLM via API com ferramentas tipadas; preços, descontos e autorização de acesso a pedidos tratados no código.
-- Modelo inicial proposto: `gpt-6.1-sol`, configurável por ambiente. A escolha será validada com os cenários do projeto e com o acesso disponível na conta.
+- Provedor exclusivamente local: Ollama com `qwen3:8b`, configurável por ambiente. Não requer chave de API nem serviços pagos.
 - Testes locais sem credenciais e avaliação separada com o modelo real.
 
-O comando do agente será adicionado quando a integração com LLM estiver implementada. O modelo ainda não foi chamado nem avaliado neste projeto.
+O agente está disponível em `POST /chat`. Crie uma sessão em `POST /sessions` e use seu `session_id` como Bearer em `/docs`. O Ollama local precisa estar em execução com o modelo baixado. Consulte o guia do agente para os comandos e as limitações.
 
 ## Histórico de desenvolvimento
 

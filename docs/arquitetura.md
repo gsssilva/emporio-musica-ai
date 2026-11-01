@@ -1,6 +1,6 @@
 # Arquitetura proposta
 
-Status: pacote Python, ingestão transacional, consultas de catálogo/pedidos e cálculos comerciais implementados. API de catálogo e interface local também estão implementadas. Integração dessas consultas como ferramentas do LLM, retrieval e chat seguem como proposta. Detalhes da etapa disponível em [ingestão](ingestao.md).
+Status: pacote Python, ingestão transacional, consultas de catálogo/pedidos e cálculos comerciais implementados. API de catálogo e interface local também estão implementadas. Recuperação das políticas, agente com ferramentas e API de chat também estão implementados. A avaliação ampliada do modelo está em andamento. Detalhes da etapa disponível em [ingestão](ingestao.md).
 
 ## Abordagem
 
@@ -49,13 +49,11 @@ Referências: [FTS5 e BM25](https://www.sqlite.org/fts5.html), [extração de te
 
 ### Modelo e provedor
 
-Proposta inicial: OpenAI Responses API, SDK oficial Python e `gpt-6.1-sol` configurável por ambiente. O catálogo oficial apresenta esse modelo como uma opção de equilíbrio entre capacidade e custo, com suporte a funções. A adequação ao atendimento da loja ainda precisa ser medida nos cenários do projeto; o nome do modelo não é evidência de qualidade do agente.
+O provedor é exclusivamente local: Ollama com `qwen3:8b`, sem chave de API, sem cobrança por tokens e sem fallback pago. O endpoint é restrito a loopback e o processo inicia com nuvem desativada. O cliente usa a API nativa de chat e chamadas de ferramentas do Ollama. A etapa final solicita um JSON estruturado, validado no servidor.
 
-Usar esquemas estritos nas ferramentas, com validação adicional no servidor. Definir limite de rodadas de ferramentas, tamanho de contexto, tokens de saída e timeout. Não aplicar novas tentativas ilimitadas. Preservar os itens de protocolo necessários entre chamadas, sem registrar raciocínio privado.
+O código separa provedor, agente, registro de ferramentas e sessões. Testes usam um provedor simulado para validar o protocolo sem depender da GPU; a avaliação do modelo real é separada e identificada. A qualidade não é presumida pelo tamanho do modelo.
 
-Testes devem usar um provedor simulado para exercitar o fluxo sem credenciais. Esse modo precisa estar identificado; não substitui a avaliação do modelo real. Verificar acesso ao modelo na conta antes de declarar a integração validada.
-
-Referências verificadas em 01/11/2026: [catálogo oficial](https://developers.openai.com/api/docs/models), [function calling](https://developers.openai.com/api/docs/guides/function-calling).
+Detalhes de custos, limites, autenticação simulada e comportamento de falha estão em [agente local](agente.md).
 
 ### Persona, evidências e recusas
 

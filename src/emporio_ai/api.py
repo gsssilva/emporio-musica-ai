@@ -2,23 +2,50 @@
 
 from __future__ import annotations
 
-import os
 import sqlite3
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from emporio_ai.commerce import PaymentRuleError
 from emporio_ai.queries import ProductUnavailable, StoreQueries
+from emporio_ai.agent import CustomerAgent
+from emporio_ai.chat_api import conversation_router
+from emporio_ai.policies import PolicySearch
+from emporio_ai.provider import OllamaProvider, ProviderUnavailable
+from emporio_ai.sessions import SessionStore, SessionExpired, SessionBusy, SessionLimit
+from emporio_ai.settings import Settings
+from emporio_ai.tools import ToolRegistry
 
 
-def create_app(database: Path | None = None) -> FastAPI:
-    store = StoreQueries(database or Path(os.getenv("EMPORIO_DATABASE", "runtime/emporio.sqlite3")))
+def create_app(database: Path | None = None, *, agent=None, sessions=None) -> FastAPI:
+    config = Settings.from_env()
+    store = StoreQueries(database or config.database)
+    customer_agent = agent or CustomerAgent(OllamaProvider(config.ollama_url, config.model),
+                                           ToolRegistry(store, PolicySearch(config.policies_database)))
+    session_store = sessions or SessionStore(database.parent / "sessions.sqlite3" if database is not None else config.sessions_database)
     app = FastAPI(title="Empório da Música", version="0.1.0",
-                  description="Demonstração local do catálogo e condições comerciais.")
+                  description="Agente de atendimento gratuito com modelo local. Crie uma sessão, copie session_id para Authorize (Bearer) e envie mensagens em POST /chat. Não requer chave de API paga.")
+    app.include_router(conversation_router(customer_agent, session_store, demo_customer_id=config.demo_customer_id))
+
+    @app.exception_handler(ProviderUnavailable)
+    async def provider_error(_request, error):
+        return JSONResponse(status_code=503, content={"detail": str(error)})
+
+    @app.exception_handler(SessionExpired)
+    async def session_expired(_request, error):
+        return JSONResponse(status_code=401, content={"detail": str(error)}, headers={"WWW-Authenticate": "Bearer"})
+
+    @app.exception_handler(SessionBusy)
+    async def session_busy(_request, error):
+        return JSONResponse(status_code=409, content={"detail": str(error)})
+
+    @app.exception_handler(SessionLimit)
+    async def session_limit(_request, error):
+        return JSONResponse(status_code=429, content={"detail": str(error)})
 
     @app.exception_handler(sqlite3.Error)
     async def database_error(_request, _error):
@@ -26,6 +53,10 @@ def create_app(database: Path | None = None) -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     def home():
+        return RedirectResponse("/docs")
+
+    @app.get("/catalogo", include_in_schema=False)
+    def catalog_preview():
         return FileResponse(Path(__file__).parent / "web" / "index.html")
 
     @app.get("/health")
