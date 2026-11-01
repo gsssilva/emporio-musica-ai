@@ -59,3 +59,5 @@ Verificações executadas nesta etapa:
 A carga substitui um snapshot inteiro e não implementa CDC ou atualização incremental de ERP. O histórico anterior do snapshot não é arquivado. A base tem poucos registros, portanto o processamento em memória é adequado ao recorte recebido.
 
 Não há autenticação de usuários nem API nesta etapa. As futuras ferramentas devem controlar acesso e minimizar os campos enviados ao modelo. Manter o comando local de ingestão separado das interfaces de atendimento.
+
+Os CSVs são marcados como `-text` no `.gitattributes`. Isso evita que o Git normalize as quebras de linha e altere os hashes dos arquivos originais ao clonar em outro sistema operacional.
