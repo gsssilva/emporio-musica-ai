@@ -16,7 +16,7 @@ Referências: [Ollama local](https://docs.ollama.com/quickstart), [Qwen3 8B](htt
 2. O modelo escolhe uma das cinco ferramentas do registro fechado.
 3. Pydantic valida tipos, limites e campos extras. O servidor executa a consulta ou cálculo.
 4. O resultado e suas fontes são enviados ao modelo como dados de ferramenta.
-5. O modelo pode consultar novamente, dentro dos limites de execução. Uma pergunta de pagamento exige cotação; uma solicitação de alternativas exige consulta das opções disponíveis.
+5. O modelo pode consultar novamente, dentro dos limites de execução. Uma pergunta de pagamento exige cotação. Se o modelo não conclui a busca de alternativas após confirmar indisponibilidade, o servidor executa a consulta de leitura da mesma categoria por uma regra explícita de atendimento.
 6. Uma etapa final sem ferramentas redige a mensagem natural. A estrutura JSON da API e a lista de fontes são montadas e validadas pelo servidor, em vez de depender da classificação do modelo.
 7. A aplicação rejeita referências inexistentes, valida evidência e aplica barreiras de consistência para ambiguidades conhecidas do manual. Uma condição comercial ambígua permanece marcada para confirmação humana.
 
@@ -28,7 +28,7 @@ Antes da seleção de ferramentas, dúvidas reconhecidas sobre políticas recebe
 
 A busca de instrumentos aceita palavras naturais em `query` e orçamento em reais em `max_price_brl`. O servidor converte valores para centavos e resolve categorias a partir dos dados. Isso evita que o modelo invente IDs de categoria ou faça conversões monetárias. IDs de produto continuam sendo validados como inteiros.
 
-Guardas de negócio são identificadas por `trigger=business_rule`: frete exatamente em R$ 500 quando a fonte só define acima/abaixo; estoque positivo de produto descontinuado; contexto de garantia e previsões históricas. Essas barreiras implementam restrições explícitas do cenário, sem executar transações comerciais. O campo `generation_mode` distingue inferência, bloqueio de autorização e respostas com guardas.
+Guardas de negócio são identificadas por `trigger=business_rule`: frete exatamente em R$ 500 quando a fonte só define acima/abaixo; disponibilidade de produtos por status e quantidade, com alternativas efetivamente consultadas; contexto de garantia e previsões históricas. Essas barreiras implementam restrições explícitas do cenário, sem executar transações comerciais. O campo `generation_mode` distingue inferência, bloqueio de autorização e respostas com guardas.
 
 ## Limites e falhas
 
@@ -59,4 +59,4 @@ Esse mecanismo isola conversas, mas **não autentica um cliente da loja**. Por p
 
 ## Limitações de fundamentação
 
-Validar IDs garante que uma fonte citada foi consultada; não comprova que cada frase a interpreta corretamente. O modelo ainda pode resumir mal uma política ou omitir uma condição. Por isso, testes determinísticos verificam as barreiras do sistema, e uma avaliação separada usa o LLM real para revisar a qualidade das respostas. Não apresentar testes com provedor simulado como avaliação do modelo real.
+Validar IDs garante que uma fonte citada foi consultada; não comprova que cada frase a interpreta corretamente. O modelo ainda pode resumir mal uma política ou omitir uma condição. As regras determinísticas de disponibilidade e ambiguidades conhecidas são identificadas na trilha; não são apresentadas como texto gerado livremente pelo modelo. Por isso, testes determinísticos verificam as barreiras do sistema, e uma avaliação separada usa o LLM real para revisar a qualidade das respostas. Não apresentar testes com provedor simulado como avaliação do modelo real.

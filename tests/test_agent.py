@@ -204,6 +204,21 @@ class AgentTests(ToolFixture):
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["sources"][0]["id"], "catalog:81")
 
+    def test_unavailable_product_alternatives_do_not_depend_on_repeated_model_calls(self):
+        import sqlite3
+        from contextlib import closing
+        with closing(sqlite3.connect(self.root / "catalog.sqlite3")) as connection:
+            connection.execute("INSERT INTO products SELECT 85,price_cents,'Alternativa',category_id,description,3,status,specs_json,created_at FROM products WHERE product_id=81")
+            connection.execute("UPDATE products SET stock_quantity=0 WHERE product_id=81")
+            connection.commit()
+        provider = ScriptedProvider([tool_call("get_product", {"product_id": 81}), {"role": "assistant", "content": "draft"}])
+        result = CustomerAgent(provider, self.registry).respond("O produto 81 está disponível? Tem alternativa?")
+        self.assertEqual(result["status"], "completed")
+        self.assertIn("sem estoque", result["answer"])
+        self.assertIn("Alternativa", result["answer"])
+        self.assertTrue({"catalog:81", "catalog:85"}.issubset({source["id"] for source in result["sources"]}))
+        self.assertEqual(len(provider.requests), 2)
+
     def test_deadline_and_message_boundaries(self):
         provider = ScriptedProvider([])
         with self.assertRaises(ProviderUnavailable):

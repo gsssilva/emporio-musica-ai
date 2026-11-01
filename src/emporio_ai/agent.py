@@ -52,6 +52,7 @@ class CustomerAgent:
         sources, trace, usage = {}, [], {"input_tokens": 0, "output_tokens": 0}
         calls_count, requires_confirmation = 0, False
         product_facts, order_facts, consulted_products = {}, [], set()
+        alternatives_lookup_done = False
         intent = normalize(message)
         policy_topics = ("horar", "endereco", "devol", "arrepend", "troca", "garantia", "defeit", "frete", "pagamento", "parcel", "pix", "desconto", "acessor", "whatsapp", "telefone", "privacidade")
         if any(topic in intent for topic in policy_topics):
@@ -98,8 +99,18 @@ class CustomerAgent:
                     continue
                 unavailable = [product for product in product_facts.values() if not product["available"]]
                 if "alternativ" in intent and unavailable and not any(product["available"] for product in product_facts.values()):
-                    messages.append({"role": "system", "content": "O cliente pediu alternativas para um produto indisponível. Busque search_products com query=" + unavailable[0]["category"] + " e available_only=true, sem o nome do modelo indisponível. Não basta oferecer uma busca futura."})
-                    continue
+                    if calls_count >= self.max_tool_calls:
+                        return finish("Confirmei a indisponibilidade, mas não consegui concluir a busca de alternativas dentro do limite. Podemos consultar as opções em uma nova mensagem?", list(sources.values()), "needs_human", "tool_limit")
+                    alternative_result = self.tools.execute("search_products", {"query": unavailable[0]["category"], "available_only": True, "limit": 3}, customer_id=customer_id)
+                    calls_count += 1
+                    trace.append({"tool": "search_products", "ok": alternative_result["ok"], "trigger": "business_rule"})
+                    if alternative_result["ok"]:
+                        alternatives_lookup_done = True
+                        for source in alternative_result["sources"]:
+                            sources[source["id"]] = source
+                        for product in alternative_result["data"]["products"]:
+                            product_facts[product["product_id"]] = product
+                    break
                 payment_requested = any(term in intent for term in ("pix", "parcel", "cartao", "boleto", "debito"))
                 quoted = any(tool["tool"] == "quote_payment" and tool["ok"] for tool in trace)
                 if payment_requested and any(product["available"] for product in product_facts.values()) and not quoted:
@@ -147,6 +158,36 @@ class CustomerAgent:
         else:
             return finish("Não consegui concluir a consulta dentro do limite. Podemos tratar uma dúvida por vez?", [], "needs_human", "round_limit")
 
+        explicit_ids = [int(value) for value in re.findall(r"\bproduto\s+(\d+)\b", intent)]
+        if any(word in intent for word in ("compr", "dispon", "estoque")):
+            for product_id in explicit_ids:
+                product = product_facts.get(product_id)
+                if product and not product["available"]:
+                    if product["status"] == "discontinued":
+                        answer = f"O produto {product['name']} está descontinuado. A base registra {product['stock_quantity']} unidade(s), mas o status impede oferecê-lo automaticamente como disponível."
+                        kind = "needs_human"
+                    elif product["status"] == "coming_soon":
+                        answer = f"O produto {product['name']} está em lançamento futuro e ainda não está liberado para oferta. Não há data confirmada de disponibilidade na base."
+                        kind = "grounded"
+                    else:
+                        answer = f"O produto {product['name']} está temporariamente sem estoque (0 unidades). Não há previsão de reposição confirmada na base."
+                        kind = "grounded"
+                    selected_ids = [f"catalog:{product_id}"]
+                    alternatives = [item for item in product_facts.values() if item["available"] and item["product_id"] != product_id][:3]
+                    if alternatives:
+                        answer += " Alternativas disponíveis consultadas:"
+                        for item in alternatives:
+                            cents = item["current_price_cents"]
+                            price = f"{cents // 100:,}".replace(",", ".") + f",{cents % 100:02d}"
+                            answer += f"\n- {item['name']}: R$ {price}."
+                            selected_ids.append(f"catalog:{item['product_id']}")
+                    elif alternatives_lookup_done:
+                        answer += " Não encontrei outras opções ativas com estoque na mesma categoria nessa consulta."
+                    else:
+                        answer += " Posso buscar alternativas ativas com estoque na mesma categoria."
+                    trace.append({"tool": "availability_guard", "ok": True, "trigger": "business_rule"})
+                    return finish(answer, [sources[source_id] for source_id in selected_ids if source_id in sources], kind, "completed")
+
         constraints = ["Escreva answer como uma mensagem natural em português para o cliente. Não coloque nomes de campos, kind= ou instruções dentro de answer. Use a pergunta original e as ferramentas, não um rascunho anterior.",
                        "Não negue garantia por ultrapassar o procedimento de troca de 30 dias. A fonte de garantia e a data real do recebimento também importam.",
                        "Não invente reposição em breve. Não diga sem estoque se a quantidade consultada for positiva, mesmo em produto descontinuado."]
@@ -169,7 +210,7 @@ class CustomerAgent:
                 if not ids and any(term in normalize(raw_answer) for term in ("nao posso", "nao sou", "instrumentos musicais", "fora do escopo")):
                     classification = "out_of_scope"
                 final = FinalAnswer(answer=raw_answer, source_ids=ids, kind=classification)
-            inline_ids = re.findall(r"\[((?:policy|catalog|order):[^\]]+)\]", final.answer)
+            inline_ids = re.findall(r"\b(?:policy:(?:cover|[0-9]+(?:\.[0-9]+)?)|catalog:[0-9]+|order:[0-9]+|catalog_lookup:[0-9]+|catalog_search:[a-f0-9]{12})\b", final.answer)
             if any(source_id not in sources for source_id in inline_ids):
                 raise ValueError("Unknown inline citation")
             if final.answer.strip() in {"greeting", "clarification", "grounded", "needs_human", "out_of_scope"}:
