@@ -40,7 +40,7 @@ Após a validação, a carga abre uma conexão com chaves estrangeiras habilitad
 
 Somente então executa `COMMIT`. Uma falha durante a escrita produz rollback das linhas e dos metadados. Arquivos inválidos são rejeitados antes de abrir o banco. Repetir a carga substitui os registros, sem acumular cópias.
 
-O comando recusa bancos com tabelas desconhecidas e versões incompatíveis, para evitar sobrescrever outro banco ou executar uma migração implícita. Versão atual do esquema: 1. Quando houver novas tabelas para retrieval ou sessões, a evolução desse contrato precisará ser explícita.
+O comando recusa bancos com tabelas desconhecidas e versões incompatíveis, para evitar sobrescrever outro banco ou executar uma migração implícita. Versão atual do esquema: 1. Retrieval e sessões usam bancos separados e não alteram esse contrato.
 
 ## Proveniência e verificações
 
@@ -58,6 +58,6 @@ Verificações executadas nesta etapa:
 
 A carga substitui um snapshot inteiro e não implementa CDC ou atualização incremental de ERP. O histórico anterior do snapshot não é arquivado. A base tem poucos registros, portanto o processamento em memória é adequado ao recorte recebido.
 
-Não há autenticação de usuários nem API nesta etapa. As futuras ferramentas devem controlar acesso e minimizar os campos enviados ao modelo. Manter o comando local de ingestão separado das interfaces de atendimento.
+A ingestão permanece um comando local separado das interfaces. As ferramentas de atendimento controlam acesso a pedidos e minimizam os campos enviados ao modelo; o protótipo não implementa autenticação real de clientes.
 
 Os CSVs são marcados como `-text` no `.gitattributes`. Isso evita que o Git normalize as quebras de linha e altere os hashes dos arquivos originais ao clonar em outro sistema operacional.

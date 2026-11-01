@@ -1,74 +1,64 @@
-# Arquitetura proposta
+# Arquitetura e decisões
 
-Status: pacote Python, ingestão transacional, consultas de catálogo/pedidos e cálculos comerciais implementados. API de catálogo e interface local também estão implementadas. Recuperação das políticas, agente com ferramentas e API de chat também estão implementados. A avaliação ampliada do modelo está em andamento. Detalhes da etapa disponível em [ingestão](ingestao.md).
+O sistema implementa um agente híbrido: ferramentas para fatos estruturados e recuperação de trechos para políticas. O LLM interpreta a pergunta e escolhe consultas. A aplicação controla acesso, valida argumentos, calcula valores e aplica restrições explícitas do domínio.
 
-## Abordagem
-
-Um agente híbrido: ferramentas tipadas para dados estruturados e retrieval das políticas para conhecimento textual. A aplicação valida argumentos, autoriza acesso e calcula condições comerciais; o LLM interpreta a conversa, escolhe consultas e redige a resposta apoiada nas evidências.
-
-Fluxo previsto:
+## Fluxo implementado
 
 ```text
-Chat / cliente HTTP
-  -> API FastAPI: validação e contexto de sessão
-  -> Serviço de conversa: histórico limitado e execução do agente
-  -> LLM: seleção de ferramentas
-  -> Registro fechado de ferramentas
-     -> Catálogo / pedidos: consultas SQLite parametrizadas
-     -> Condições comerciais: cálculo determinístico
-     -> Políticas: busca textual e trechos com origem
-  -> LLM: resposta fundamentada
-  -> API: mensagem, fontes e metadados operacionais mínimos
+Cliente HTTP / Swagger
+  -> FastAPI: validação e token de sessão
+  -> histórico limitado + contexto de cliente definido no servidor
+  -> recuperação preventiva de políticas quando pertinente
+  -> Ollama: seleção de ferramentas
+  -> registro fechado: Pydantic + consultas parametrizadas
+     -> catálogo / pedido autorizado: SQLite somente de leitura
+     -> condições comerciais: centavos e pontos-base
+     -> políticas: FTS5/BM25 com seção e página
+  -> Ollama: redação final em linguagem natural
+  -> validação de referências + guardas de negócio identificadas
+  -> resposta, fontes reais, trilha, modelo e versão do prompt
 ```
 
-## Decisões e alternativas
+## Python e API documentada
 
-### Python, FastAPI e uma interface simples
+FastAPI fornece validação e OpenAPI; `/docs` demonstra criação de sessão e atendimento sem um frontend extenso. O enunciado admite alternativas de interface e não exige simulação de e-commerce. `/catalogo` é uma visualização secundária já existente. O domínio funciona sem a interface HTTP, como mostra o avaliador de cenários.
 
-FastAPI fornece validação por tipos e documentação OpenAPI. Uma API com um chat simples é suficiente para demonstrar integração full-stack sem desviar o prazo para um frontend complexo. O domínio e o agente devem funcionar independentemente da interface.
+## SQLite e regras determinísticas
 
-Referência: [documentação oficial do FastAPI](https://fastapi.tiangolo.com/).
+O conjunto recebido contém 191 registros operacionais, compatíveis com banco local. A ingestão valida esquema, relacionamentos, domínios e valores antes de publicar o snapshot em transação. Valores monetários usam `Decimal` na entrada e centavos inteiros nos cálculos; descontos usam pontos-base e arredondamento explícito.
 
-### SQLite e consultas controladas
+Catálogo, políticas e sessões ficam em três bancos distintos. Reimportar dados não elimina conversas nem o índice de políticas. Consultas de atendimento usam conexão somente de leitura, SQL parametrizado e projeções com campos mínimos. Não existe ferramenta que aceite SQL livre ou escreva em pedidos.
 
-O volume de dados cabe confortavelmente em um banco local. SQLite reduz dependências operacionais e permite testes com banco temporário. A ingestão deve validar esquema, tipos, status, relacionamentos e duplicatas antes de publicar uma nova versão local dos dados, em transação.
+As ferramentas são `search_products`, `get_product`, `quote_payment`, `search_policies` e `get_order_status`. Argumentos extras e tipos incorretos são rejeitados. Categorias são resolvidas pelo servidor a partir do catálogo, sem exigir que o modelo invente IDs. A identidade autorizada de cliente não é um argumento do modelo.
 
-Não expor SQL arbitrário ao modelo. O LLM recebe ferramentas como `search_products`, `get_product`, `get_order_status`, `quote_payment` e `search_policies`. Cada consulta possui parâmetros validados e limite de resultados. IDs e permissões vêm do contexto confiável do servidor quando necessário.
+## Retrieval lexical
 
-Valores financeiros devem ser convertidos com `Decimal` e persistidos em centavos inteiros. Definir e testar arredondamento em centavos. Preservar valores originais e a origem do desconto. O cálculo não deve acumular PIX com promoção.
+O manual tem oito páginas. `pypdf` extrai o texto e o indexador agrupa 29 trechos por seção, preservando páginas e hash do original. SQLite FTS5/BM25, normalização de acentos e expansão controlada de termos recuperam texto com baixa complexidade operacional. Seções relacionadas evitam interpretar troca sem garantia ou exceções.
 
-### Retrieval textual antes de embeddings
+Embeddings não foram necessários para os cenários avaliados. A busca lexical pode falhar em paráfrases novas; uma evolução deve comparar recuperação com o mesmo conjunto de perguntas antes de adicionar infraestrutura. Catálogo e pedidos exigem consultas exatas, não busca vetorial para calcular preços ou autorizar acesso.
 
-O manual tem oito páginas. A primeira versão deve extrair texto com `pypdf`, remover cabeçalhos/rodapés repetidos e separar conteúdo por seções, preservando página e seção. Se uma seção atravessar páginas, reter todas as páginas de origem.
+## Modelo local e custo
 
-Busca lexical com SQLite FTS5/BM25, normalização de acentos e expansão controlada de sinônimos é uma hipótese inicial a validar. Recuperar seções relacionadas quando houver dependência, como trocas, exceções e garantia. Caso a avaliação mostre falhas relevantes de paráfrase, comparar embeddings usando os mesmos casos antes de aumentar a infraestrutura.
+Ollama com `qwen3:8b` executa chamadas de ferramentas no próprio computador. O cliente aceita somente loopback, ignora proxies e recusa modelos de nuvem; o script configura nuvem desativada. Sem API paga, chave, cobrança por tokens ou fallback externo. O custo operacional é o uso do hardware e da energia existentes.
 
-Evitar usar busca vetorial para calcular preços, localizar um pedido autorizado ou filtrar estoque. Os dados operacionais exigem consulta exata.
+O provedor é separado do agente. Testes de protocolo usam um substituto explicitamente identificado; a avaliação real registra digest, versão do servidor, prompt, parâmetros e revisão. Temperatura zero e seed fixa reduzem variação, sem prometer igualdade entre diferentes GPUs ou versões.
 
-Referências: [FTS5 e BM25](https://www.sqlite.org/fts5.html), [extração de texto com pypdf](https://pypdf.readthedocs.io/en/stable/user/extract-text.html).
+## Evidências e guardas
 
-### Modelo e provedor
+O prompt em português define persona, escopo e obrigação de consultar fatos. Conteúdo recuperado e mensagens do usuário permanecem dados, sem autoridade de sistema. Fontes são anexadas pelo servidor a partir das ferramentas; referências inexistentes são rejeitadas.
 
-O provedor é exclusivamente local: Ollama com `qwen3:8b`, sem chave de API, sem cobrança por tokens e sem fallback pago. O endpoint é restrito a loopback e o processo inicia com nuvem desativada. O cliente usa a API nativa de chat e chamadas de ferramentas do Ollama. A etapa final redige linguagem natural; o servidor monta o envelope JSON e anexa as fontes realmente consultadas.
+Preços, PIX, disponibilidade por status/estoque, contexto de devolução e ambiguidades conhecidas recebem guardas determinísticas. A trilha distingue chamadas do modelo, recuperação preventiva e regras de negócio. Essa separação preserva auditabilidade: uma resposta com guarda não é apresentada como geração livre do modelo.
 
-O código separa provedor, agente, registro de ferramentas e sessões. Testes usam um provedor simulado para validar o protocolo sem depender da GPU; a avaliação do modelo real é separada e identificada. A qualidade não é presumida pelo tamanho do modelo.
+Validar a origem não comprova a interpretação de toda frase. O relatório separa checks automáticos de revisão semântica. Faltas de informação levam a esclarecimento ou confirmação humana, sem aprovar devolução, concessão comercial ou pagamento.
 
-Detalhes de custos, limites, autenticação simulada e comportamento de falha estão em [agente local](agente.md).
+## Sessões, privacidade e operação
 
-### Persona, evidências e recusas
+Tokens aleatórios de conversa têm apenas hashes persistidos; expiram em 24 horas e permitem exclusão. Lease transacional impede concorrência na mesma sessão; um semáforo limita a inferência local a uma por vez. Há limites de mensagens, contexto, rodadas, ferramentas e tempo.
 
-Prompt do sistema curto, versionado e em português: persona da loja, escopo, obrigação de consultar fatos comerciais, tratamento de lacunas e limites de ação. Manter conhecimento de negócio nas fontes e regras de cálculo no domínio, evitando duplicação de tabelas de preços no prompt.
+O token de conversa não autentica cliente da loja. Sem identidade confiável, pedidos são bloqueados. A demonstração admite identidade fixa no ambiente do servidor, explicitamente simulada. Ferramentas de pedido filtram simultaneamente pedido e cliente e omitem dados pessoais.
 
-Responder com fonte quando uma política fundamentar a resposta. Um identificador de fonte deve corresponder a um trecho realmente recuperado. Em ausência de evidência, pedir esclarecimento ou indicar confirmação com a equipe. Uma recusa de assunto fora de escopo deve ser educada e oferecer ajuda sobre a loja.
+Logs operacionais registram requisição, modelo, prompt, duração e quantidade de chamadas; não registram mensagens completas ou tokens de conversa. Bancos e configurações locais são ignorados pelo Git. A API fica vinculada a `127.0.0.1`.
 
-### Histórico, privacidade e observabilidade
+## Limites do recorte
 
-Sessões isoladas, identificadores aleatórios e limite de mensagens/contexto. O protótipo local não deve expor dados de pedidos como se houvesse autenticação de produção. Ferramentas de pedidos filtram por cliente autorizado e retornam apenas o necessário; nunca listar a base de clientes ao LLM.
-
-Logs devem conter ID de requisição, duração, ferramenta, resultado operacional, uso de tokens quando disponível e erros classificados. Não registrar conteúdo integral de conversas, e-mails, telefones ou chaves. Definir expiração e exclusão do histórico quando a persistência for implementada.
-
-## Limites deliberados da primeira versão
-
-Sem integração real de WhatsApp, transportadora, pagamento ou ERP. Sem alteração de estoque, cancelamento de pedido ou concessão de reembolso. Sem previsão de frete inventada. Sem múltiplos agentes ou framework de orquestração complexo no escopo inicial.
-
-Consultar a base local significa acessar o último snapshot importado. A resposta e a documentação devem distinguir isso de uma integração externa em tempo real.
+Sem ERP, WhatsApp, transportadora, processamento de pagamento, alteração de estoque, cancelamento ou reembolso. Os dados são snapshots. Autenticação real, publicação externa, monitoramento de produção e escalabilidade exigiriam outro trabalho. A decisão mantém o foco no agente, nas fontes e na reprodução do desafio.

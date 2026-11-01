@@ -28,13 +28,15 @@ Antes da seleção de ferramentas, dúvidas reconhecidas sobre políticas recebe
 
 A busca de instrumentos aceita palavras naturais em `query` e orçamento em reais em `max_price_brl`. O servidor converte valores para centavos e resolve categorias a partir dos dados. Isso evita que o modelo invente IDs de categoria ou faça conversões monetárias. IDs de produto continuam sendo validados como inteiros.
 
-Guardas de negócio são identificadas por `trigger=business_rule`: frete exatamente em R$ 500 quando a fonte só define acima/abaixo; disponibilidade de produtos por status e quantidade, com alternativas efetivamente consultadas; contexto de garantia e previsões históricas. Essas barreiras implementam restrições explícitas do cenário, sem executar transações comerciais. O campo `generation_mode` distingue inferência, bloqueio de autorização e respostas com guardas.
+Guardas de negócio são identificadas por `trigger=business_rule`: frete exatamente em R$ 500 quando a fonte só define acima/abaixo; disponibilidade de produtos por status e quantidade, com alternativas efetivamente consultadas; contexto de garantia e previsões históricas; explicação do PIX derivada da cotação; devolução condicionada ao canal e recebimento real. Essas barreiras implementam restrições explícitas do cenário, sem executar transações comerciais. O campo `generation_mode` distingue inferência, bloqueio de autorização e respostas com guardas.
 
 ## Limites e falhas
 
 Máximo de seis rodadas de seleção de ferramentas e oito chamadas por mensagem, com uma etapa final de formatação. Mensagens têm limite de 2.000 caracteres. O contexto recente contém até três pares de mensagens e um limite global de caracteres. A saída do modelo possui limite de tokens.
 
-O prazo de execução é limitado no agente, e cada requisição HTTP possui timeout. Não há retentativa automática ilimitada. Falha do provedor retorna 503, preserva o histórico anterior e libera a sessão. Estouro de ferramentas ou referências inválidas produz uma resposta controlada, sem apresentar conteúdo inventado como resultado confirmado.
+O prazo total é de 240 segundos no agente, com até 90 segundos por requisição ao modelo e limite de contexto. Não há retentativa automática ilimitada. Falha do provedor retorna 503, preserva o histórico anterior e libera a sessão. Estouro de ferramentas ou referências inválidas produz uma resposta controlada, sem apresentar conteúdo inventado como resultado confirmado.
+
+Temperatura zero, seed 42 e contexto de 8.192 tokens ficam registrados no relatório. A avaliação fixa uma hora de referência por rodada; isso não garante determinismo entre diferentes hardwares.
 
 O aquecimento inicial do modelo e os kernels da GPU podem tornar a primeira consulta mais lenta. A avaliação deve registrar essa diferença em vez de prometer uma latência fixa.
 

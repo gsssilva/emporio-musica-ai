@@ -1,28 +1,28 @@
 # Empório da Música - Assistente de atendimento
 
-Projeto do desafio técnico de AI Engineer da Artefact: um agente em Python para responder dúvidas sobre instrumentos musicais, consultar dados da loja e aplicar suas políticas de atendimento.
+Agente em Python para o desafio técnico de AI Engineer da Artefact. Consulta o catálogo da loja fictícia, calcula condições comerciais e recupera políticas com referências ao documento original. A demonstração principal é uma API FastAPI com Swagger, suficiente para exercitar o agente sem construir uma loja virtual.
 
-## Estado atual
+**Execução local gratuita:** Ollama com `qwen3:8b`, SQLite e Python. Sem chave de API, assinatura, cobrança por tokens ou fallback pago. O computador fornece memória, processamento e energia; o download inicial requer internet.
 
-Ingestão, consultas estruturadas, condições comerciais e recuperação das políticas implementadas: pacote Python instalável, banco SQLite e 78 testes automatizados. O agente local com ferramentas e o endpoint `/chat` estão implementados e possuem testes de integração. A avaliação ampliada com o modelo real está em preparação.
+## O que está implementado
 
-Entrega informada: terça-feira, 03/11/2026. O horário limite deve ser conferido no e-mail do processo seletivo.
+- Ingestão validada e transacional dos seis CSVs, com hashes dos originais.
+- Cinco ferramentas tipadas, consultas somente de leitura e cálculos em centavos.
+- Recuperação lexical de 29 trechos do manual, com seção e páginas.
+- Agente com limites de execução, fontes efetivamente consultadas e guardas de negócio explícitas.
+- Sessões isoladas, expiração, exclusão e bloqueio de pedidos sem contexto autorizado.
+- 90 testes automatizados e avaliação separada de 13 cenários com o modelo local real.
+- Cinco conversas executadas, documentação técnica e geração reproduzível de PDF.
 
-## Documentação
+O enunciado permite diferentes interfaces. A escolha foi API documentada; `/catalogo` preserva uma visualização auxiliar já implementada. Não há integração de WhatsApp, ERP, transportadora, checkout ou execução de reembolsos.
 
-- [Requisitos, dados e regras de negócio](docs/entendimento.md)
-- [Arquitetura e decisões propostas](docs/arquitetura.md)
-- [Etapas, critérios de aceite e commits](docs/plano.md)
-- [Relatório reproduzível dos CSVs](docs/auditoria-dados.json)
-- [Consultas e condições comerciais](docs/consultas.md)
-- [Recuperação das políticas](docs/retrieval.md)
-- [Agente local e sessões](docs/agente.md)
+## Preparar o ambiente
 
-## Configurar e executar
-
-Requer Python 3.11 ou superior com `pip` e `venv`. Abra o terminal na raiz deste projeto. Os comandos abaixo usam PowerShell e não exigem ativação de scripts:
+Requer Python 3.11+, Git, Ollama e espaço para o modelo de aproximadamente 5,2 GB. Ambiente validado: Windows, 16 GB de RAM e RTX 4060 com 8 GB de VRAM. Máquinas diferentes podem apresentar latência maior; os testes determinísticos não exigem GPU.
 
 ```powershell
+git clone https://github.com/gsssilva/emporio-musica-ai.git
+cd emporio-musica-ai
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 .\.venv\Scripts\python.exe -m pip install -e . --no-deps
@@ -31,84 +31,109 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m emporio_ai index-policies
 ```
 
-A validação e a ingestão usam apenas a biblioteca padrão, sem chave de API ou acesso à rede. A instalação pode acessar o índice de pacotes para obter as ferramentas de build. O banco gerado fica em `runtime/emporio.sqlite3` e não deve ser versionado.
+Execute sempre na raiz do projeto. `data/` contém os originais; bancos, modelo e conversas locais ficam em `runtime/`, ignorado pelo Git. A ingestão substitui o snapshot em uma transação e recusa bancos desconhecidos.
 
-Os caminhos padrão `data/` e `runtime/` são relativos ao diretório do terminal. Para outras localizações:
+### Iniciar o modelo
+
+Instale o [Ollama](https://ollama.com/download) ou use seu pacote portátil oficial em `runtime/tools/ollama/`. Feche outro servidor Ollama antes de iniciar o processo deste projeto na mesma porta. Em um terminal PowerShell:
 
 ```powershell
-.\.venv\Scripts\python.exe -m emporio_ai ingest --data-dir data --database runtime/emporio.sqlite3
+powershell -ExecutionPolicy Bypass -File scripts/start-model.ps1
 ```
 
-### Interface local
-
-Depois da ingestão, execute na raiz do projeto:
+O script configura somente seu processo: `127.0.0.1:11434`, nuvem desativada, contexto de 8.192 tokens e modelos em `runtime/ollama-models`. Em outro terminal, baixe o modelo uma vez:
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn emporio_ai.api:app --host 127.0.0.1 --port 8000
+ollama pull qwen3:8b
 ```
 
-Abra [a interface local](http://127.0.0.1:8000) ou [a documentação da API](http://127.0.0.1:8000/docs). A interface permite buscar instrumentos disponíveis, filtrar por categoria e orçamento e consultar condições de pagamento. É uma prévia funcional do catálogo; não há chat com LLM nesta versão. Para encerrar o servidor no terminal, use Ctrl+C.
+Se estiver usando o pacote portátil sem Ollama no PATH, substitua `ollama` por `.\runtime\tools\ollama\ollama.exe`. O download é público e não requer chave ou login. Depois do download, as consultas usam os arquivos locais.
 
-Detalhes em [API e interface local](docs/api-local.md).
-
-### Testes
+### Iniciar a API
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m uvicorn emporio_ai.api:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Os testes usam registros sintéticos e bancos temporários. Cobrem validação, integridade, recarga, rollback e diagnóstico sem dados pessoais. Consulte [a documentação da ingestão](docs/ingestao.md).
+Abra [a documentação interativa local](http://127.0.0.1:8000/docs):
 
-### Auditoria independente dos arquivos originais
+1. Execute `POST /sessions`, sem corpo ou com `{}`.
+2. Copie o `session_id` retornado para **Authorize** como Bearer.
+3. Execute `POST /chat` com `{"message":"Quais violões estão disponíveis até R$ 1000?"}`.
+4. Veja `answer`, `sources`, `tool_trace` e `generation_mode` na resposta.
+5. Use `DELETE /sessions/current` para excluir conversa e histórico.
+
+Esse token é criado pelo próprio sistema para isolar a conversa, sem qualquer custo. A primeira consulta pode demorar pelo carregamento do modelo. `GET /chat/health` verifica se o modelo está disponível. Encerre os terminais com Ctrl+C.
+
+`.env` é opcional: os padrões funcionam sem credenciais. Use `.env.example` como referência para os caminhos e o modelo. Por padrão, pedidos ficam bloqueados. Somente para demonstração, `EMPORIO_DEMO_CUSTOMER_ID=2` fixa no servidor a identidade fictícia do exemplo de pedido 8; reinicie a API após mudar a configuração. Isso **não é autenticação de produção** nem deve ser definido pelo cliente ou pelo LLM.
+
+## Verificar e avaliar
 
 ```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -q
 .\.venv\Scripts\python.exe scripts/audit_data.py
+.\.venv\Scripts\python.exe scripts/evaluate_agent.py --output runtime/evaluation.json
 ```
 
-Para atualizar o relatório agregado:
+Os 90 testes verificam regras comerciais, ingestão, retrieval, autorização, sessões, falhas e protocolo do agente com provedor simulado. A avaliação final usa Ollama real; não substitui resultados por simulação quando o modelo falha. O [relatório versionado](evals/results.json) contém modelo, digest, prompt, parâmetros, revisão, tempo, fontes e verificações por caso. Os checks automáticos e a revisão das respostas têm limites descritos em [avaliação](docs/avaliacao.md); não representam garantia de precisão em perguntas novas.
+
+### Conversas executadas
+
+- [Busca de catálogo](examples/01-catalogo.md)
+- [Promoção e PIX sem cumulatividade](examples/02-promocao-pix.md)
+- [Devolução com contexto ausente](examples/03-devolucao.md)
+- [Pedido com identidade simulada](examples/04-pedido-demo.md)
+- [Assunto fora do escopo](examples/05-fora-de-escopo.md)
+
+Para gerar novamente os cinco exemplos a partir de uma nova execução real:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/audit_data.py --output docs/auditoria-dados.json
+.\.venv\Scripts\python.exe scripts/evaluate_agent.py --output runtime/evaluation.json --examples examples
 ```
 
-O script não altera os CSVs. Não imprime nomes, telefones, e-mails ou conteúdo das observações dos clientes. Retorna código 1 ao encontrar problemas estruturais ou de domínio; divergências entre total histórico e preços atuais são avisos.
-
-## Estrutura
+## Arquitetura e documentação
 
 ```text
-emporio-musica-ai/
-  data/                    # CSVs e manual fornecidos, preservados sem alterações
-  docs/                    # Entendimento, arquitetura, plano e documentação técnica
-    referencias/           # Enunciado original do desafio
-  scripts/                 # Auditoria independente
-  src/emporio_ai/           # Pacote Python, CLI, validação e persistência
-  tests/                   # Testes com dados sintéticos
-  runtime/                 # Banco local gerado, ignorado pelo Git
-  pyproject.toml
-  README.md
+HTTP / Swagger -> sessão -> agente -> Ollama local
+                            |-> ferramentas validadas -> SQLite de catálogo
+                            |-> cálculos em centavos
+                            |-> retrieval FTS5 -> políticas com seção/página
+                     <- fontes reais + guardas de negócio <- resposta
 ```
 
-## Arquitetura e próximos componentes
+- [Arquitetura e decisões](docs/arquitetura.md)
+- [Ingestão e proveniência](docs/ingestao.md)
+- [Consultas e condições comerciais](docs/consultas.md)
+- [Recuperação das políticas](docs/retrieval.md)
+- [Agente, privacidade e sessões](docs/agente.md)
+- [Contrato HTTP e demonstração](docs/api-local.md)
+- [Avaliação e limitações](docs/avaliacao.md)
+- [Entendimento dos requisitos e ambiguidades](docs/entendimento.md)
+- [Auditoria agregada dos CSVs](docs/auditoria-dados.json)
 
-- Python e FastAPI para a API, com uma interface de chat simples.
-- SQLite para dados estruturados, consultas parametrizadas e histórico isolado por sessão.
-- Busca textual nas políticas com referências à página e seção de origem.
-- LLM via API com ferramentas tipadas; preços, descontos e autorização de acesso a pedidos tratados no código.
-- Provedor exclusivamente local: Ollama com `qwen3:8b`, configurável por ambiente. Não requer chave de API nem serviços pagos.
-- Testes locais sem credenciais e avaliação separada com o modelo real.
+`src/emporio_ai/` contém o pacote; `tests/`, os testes; `scripts/`, auditoria, inicialização, avaliação e geração de documentação; `evals/`, cenários e resultados; `examples/`, conversas. O enunciado está em `docs/referencias/`.
 
-O agente está disponível em `POST /chat`. Crie uma sessão em `POST /sessions` e use seu `session_id` como Bearer em `/docs`. O Ollama local precisa estar em execução com o modelo baixado. Consulte o guia do agente para os comandos e as limitações.
+## Gerar o PDF de entrega
 
-## Histórico de desenvolvimento
+Markdown é a fonte de verdade. O gerador reúne README, documentação técnica e cinco conversas em ordem explícita, com sumário, links e revisão de origem:
 
-Cada etapa deve produzir uma alteração funcional ou documental verificável antes do próximo commit. O Codex prepara, testa e executa os commits e pushes conforme autorizado pelo usuário. Não reescrever histórico nem usar force-push. Consulte [o plano](docs/plano.md) para a sequência proposta.
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[docs]"
+.\.venv\Scripts\python.exe scripts/build_docs.py
+```
 
-## Uso de assistência de IA
+Requer Git no PATH e fontes Markdown commitadas, para registrar uma revisão verificável. O resultado fica em [PDF da documentação](output/pdf/documentacao-projeto.pdf). O manifesto com hashes das fontes fica em `runtime/pdf-sources.json`. O PDF inclui a revisão das fontes; seu próprio commit acontece depois da geração. Renderização e inspeção visual fazem parte da preparação da entrega.
 
-O Codex foi utilizado na leitura dos materiais, auditoria dos CSVs, levantamento de ambiguidades, proposta técnica, implementação da ingestão, consultas de atendimento, condições comerciais, API, interface local e elaboração/execução dos testes. O usuário orienta o desenvolvimento e autorizou a execução dos commits pelo assistente. Este registro será atualizado nas etapas seguintes. O candidato deve revisar as alterações e compreender as decisões para explicá-las na avaliação.
+## Limitações e escolhas
 
-## Limitações atuais e entrega
+Os CSVs representam o último snapshot importado. Estoque, rastreamento e previsões não consultam serviços externos. Datas estimadas não comprovam recebimento. Produtos descontinuados ou em lançamento não são oferecidos automaticamente mesmo quando há estoque positivo.
 
-Os CSVs são um retrato dos dados fornecidos, sem integração com ERP ou transportadora. Consulta ao banco local não equivale a atualização externa em tempo real. O manual contém ambiguidades registradas na documentação.
+O manual tem ambiguidades em contatos, parcelas pequenas e frete exatamente em R$ 500. O atendimento encaminha confirmação nesses casos. Preços e descontos são calculados no código; a elegibilidade de devolução não é presumida sem canal e recebimento real. Fontes consultadas não comprovam automaticamente cada frase do modelo: ele ainda pode omitir nuances ou redigir mal.
 
-Ao final do desenvolvimento, a entrega incluirá o repositório público, este README completo, documentação técnica, 3 a 5 conversas produzidas pelo agente e um PDF gerado a partir da versão final do README e da documentação. **O PDF final ainda não foi gerado.**
+A API é um protótipo local, sem autenticação de clientes de produção, TLS, escalabilidade ou operação comercial real. O histórico é limitado a três pares recentes, sessões expiram em 24 horas e o processamento permite uma inferência por vez. Não expor o servidor diretamente à internet.
+
+## Uso de assistência de IA e histórico
+
+O Codex auxiliou na leitura dos materiais, auditoria, decisões, implementação, testes, avaliação das respostas, correções e documentação. Gabriel Silva definiu prioridades, escopo e restrição de custo, e autorizou commits e pushes. O candidato deve revisar o código e compreender as decisões para defendê-las na avaliação. As conversas de exemplo foram executadas com o modelo real; os testes com provedor simulado estão identificados separadamente.
+
+O histórico registra o desenvolvimento progressivo e suas correções. Não foi usado force-push. A entrega solicitada pelo enunciado é o link do repositório; o PDF é um complemento pedido pelo candidato. Prazo informado: terça-feira, 03/11/2026, com horário a conferir no e-mail da seleção. O envio final é realizado pelo candidato.

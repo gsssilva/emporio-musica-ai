@@ -2,7 +2,7 @@
 
 ## Componentes disponíveis
 
-`StoreQueries` recebe o caminho do banco importado e oferece busca de produtos, detalhe de produto, cotação de pagamento e consulta de pedido no contexto de um cliente autorizado pelo servidor. Ainda não há exposição desses métodos ao LLM ou a uma API pública.
+`StoreQueries` recebe o caminho do banco importado e oferece busca de produtos, detalhe de produto, cotação de pagamento e consulta de pedido no contexto de um cliente autorizado pelo servidor. Esses métodos são integrados ao registro tipado do agente e à API local, com bloqueio de pedidos sem identidade autorizada.
 
 As conexões usam SQLite em modo somente leitura, também protegido por `PRAGMA query_only`. Identificadores usados nas consultas SQL são parâmetros. Os resultados possuem campos explícitos, para evitar entregar ao modelo uma linha inteira de dados pessoais ou notas internas.
 
@@ -34,7 +34,7 @@ As condições descrevem o manual recebido, seções 3, 3.1 e 6.2. Não são sim
 
 O resultado contém situação registrada, total histórico, forma de pagamento, rastreamento, previsão e itens. Não contém nome do cliente, e-mail, telefone, ID do cliente ou notas internas. Recebimento efetivo e canal de compra são explicitamente desconhecidos. Uma estimativa de entrega nunca é convertida em prova de recebimento.
 
-**Esse filtro não implementa autenticação.** A futura API precisará estabelecer o contexto confiável de cliente. Não aceitar esse identificador como uma escolha livre do usuário ou como argumento gerado pelo modelo. Na demonstração, qualquer identidade simulada deverá estar claramente identificada.
+**Esse filtro não implementa autenticação.** A API estabelece o contexto exclusivamente pelo ambiente do servidor, com identidade simulada opcional. Não aceitar esse identificador como uma escolha livre do usuário ou como argumento gerado pelo modelo. Na demonstração, a identidade simulada é explicitamente identificada.
 
 ## Atualidade dos dados
 
