@@ -26,6 +26,7 @@ class OllamaProvider:
         if not model or "cloud" in model.casefold() or "/" in model or len(model) > 100:
             raise ValueError("Selecione um modelo instalado localmente, sem tag de nuvem.")
         self.model = model
+        self.options = {"temperature": 0, "seed": 42, "num_ctx": 8192, "num_predict": 1200}
 
     def ready(self) -> bool:
         try:
@@ -39,7 +40,7 @@ class OllamaProvider:
     def chat(self, messages: list[dict], *, tools: list[dict] | None = None,
              schema: dict | None = None, timeout: float = 60) -> dict:
         payload = {"model": self.model, "messages": messages, "stream": False, "think": False,
-                   "keep_alive": "10m", "options": {"temperature": 0.1, "num_ctx": 8192, "num_predict": 1200}}
+                   "keep_alive": "10m", "options": dict(self.options)}
         if tools:
             payload["tools"] = tools
         if schema:

@@ -33,17 +33,18 @@ class FinalAnswer(BaseModel):
 
 class CustomerAgent:
     def __init__(self, provider, tools: ToolRegistry, *, max_rounds: int = 6,
-                 max_tool_calls: int = 8, deadline_seconds: float = 240):
+                 max_tool_calls: int = 8, deadline_seconds: float = 240, clock=None):
         self.provider, self.tools = provider, tools
         self.max_rounds, self.max_tool_calls = max_rounds, max_tool_calls
         self.deadline_seconds = deadline_seconds
+        self.clock = clock or (lambda: datetime.now(ZoneInfo("America/Campo_Grande")))
 
     def respond(self, message: str, *, history: list[dict] | None = None,
                 customer_id: int | None = None) -> dict:
         if not isinstance(message, str) or not message.strip() or len(message) > 2000:
             raise ValueError("Mensagem deve ter entre 1 e 2000 caracteres.")
         started, request_id = time.monotonic(), uuid4().hex
-        now = datetime.now(ZoneInfo("America/Campo_Grande")).isoformat()
+        now = self.clock().isoformat()
         context = f"\nData e hora local da loja: {now}. Contexto de pedido autorizado: {'sim, demonstração local' if customer_id is not None else 'não'}."
         safe_history = [{"role": item["role"], "content": item["content"]}
                         for item in (history or [])[-6:] if item.get("role") in {"user", "assistant"}]

@@ -118,6 +118,18 @@ class QueryTests(unittest.TestCase):
         self.assertEqual(result["quote"]["total_cents"], 8959)
         self.assertFalse(result["quote"]["pix_discount_applied"])
 
+    def test_inactive_promotion_is_not_applied_and_pix_uses_table_price(self):
+        from contextlib import closing
+        with closing(sqlite3.connect(self.database)) as connection:
+            connection.execute("UPDATE promotions SET is_active=0")
+            connection.commit()
+        product = self.store.get_product(81)["product"]
+        self.assertEqual(product["promotion_bps"], 0)
+        self.assertEqual(product["current_price_cents"], 10010)
+        quote = self.store.quote_product(81, method="pix")["quote"]
+        self.assertTrue(quote["pix_discount_applied"])
+        self.assertEqual(quote["total_cents"], 9510)
+
     def test_order_context_is_required_and_other_clients_are_denied(self):
         with self.assertRaises(AuthenticationRequired):
             self.store.get_order(1, authorized_customer_id=None)
