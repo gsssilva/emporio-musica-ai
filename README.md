@@ -16,6 +16,44 @@ Agente em Python para o desafio técnico de AI Engineer da Artefact. Consulta o 
 
 O enunciado permite diferentes interfaces. A escolha foi API documentada; `/catalogo` preserva uma visualização auxiliar já implementada. Não há integração de WhatsApp, ERP, transportadora, checkout ou execução de reembolsos.
 
+## Decisões técnicas e justificativas
+
+### Frameworks e abordagem do agente
+
+Escolhi uma abordagem híbrida: function calling para consultar dados estruturados e calcular condições comerciais, combinado com RAG lexical para recuperar as políticas da loja. Separei essas responsabilidades porque preços, estoque e pedidos exigem consultas exatas, enquanto regras de atendimento precisam do contexto do manual. Mantive cálculos financeiros e autorização no código Python para reduzir a dependência da interpretação do modelo nessas operações.
+
+Optei por um ciclo de ferramentas implementado diretamente em Python, com argumentos validados pelo Pydantic e limites de rodadas, chamadas e tempo. Essa escolha me permite inspecionar o fluxo e testar falhas sem adicionar um framework de orquestração ao recorte do desafio. Usei FastAPI para expor o agente, validar as requisições e disponibilizar a documentação interativa.
+
+Para o retrieval, escolhi SQLite FTS5/BM25, normalização de termos e recuperação de seções relacionadas. O manual tem oito páginas; essa solução mantém a infraestrutura pequena e permite rastrear cada trecho à seção e às páginas de origem. Aceitei a limitação de recuperação lexical para paráfrases novas; compararia embeddings com os mesmos cenários antes de acrescentá-los.
+
+Defini um prompt de sistema em português com a persona da loja, obrigação de consultar evidências, tratamento de ambiguidades e recusa de assuntos fora do escopo. Mantive preços e textos de políticas nas fontes consultadas, em vez de copiá-los para o prompt. Registrei a versão do prompt nas respostas e tratei mensagens e trechos recuperados como dados sem autoridade para alterar as instruções. As fontes são anexadas pelo servidor; reconheço que isso comprova sua consulta, mas não garante a interpretação correta de toda frase do modelo.
+
+### Modelo e provedor
+
+Escolhi o Qwen3 8B executado localmente pelo Ollama para atender à restrição de custo e usar chamadas de ferramentas no hardware disponível. O projeto não exige chave de API nem cobrança por tokens. Restrinjo o provedor a loopback e inicio o Ollama com a nuvem desativada, mantendo as conversas na execução local.
+
+Considerei a contrapartida dessa escolha: download dos pesos, consumo de memória e energia e latência dependente do computador. Validei o comportamento com uma avaliação separada usando o modelo real, sem apresentar testes com provedor simulado como evidência de qualidade do LLM. O relatório registra modelo, digest, parâmetros, versão do prompt e revisão do código para permitir conferência.
+
+### Interface de interação
+
+Escolhi uma API FastAPI com Swagger como interface principal porque o enunciado permite API e prioriza o agente funcionando corretamente. Assim, o avaliador pode criar uma sessão, enviar mensagens e inspecionar respostas, fontes e ferramentas pela documentação interativa. Essa opção concentra o trabalho no atendimento e torna a integração HTTP verificável sem exigir um frontend extenso.
+
+Mantive a visualização de catálogo já implementada como recurso auxiliar em `/catalogo`. Uma interface visual de chat está em discussão e ainda não faz parte da implementação entregue nesta revisão. A API permanece utilizável independentemente dessa evolução.
+
+### Persistência do histórico de conversa
+
+Implementei sessões e histórico em SQLite porque perguntas de acompanhamento fazem parte da experiência de atendimento. Defini um banco separado para conversas, evitando que a reimportação do catálogo apague o histórico. Cada sessão tem token aleatório, com apenas seu hash persistido, expiração em 24 horas e possibilidade de exclusão.
+
+Limitei o contexto enviado ao modelo aos três pares recentes de mensagens para controlar seu tamanho e o custo computacional local. Aceitei que conversas longas podem perder detalhes antigos. Separei também sessão de conversa de identidade de cliente: o token permite acessar o histórico, mas não autentica pedidos. A identidade usada na demonstração é fixa no servidor e explicitamente simulada.
+
+### Tratamento dos dados
+
+Preservei os arquivos originais e seus hashes para manter a proveniência dos dados. Antes da importação, valido colunas, tipos, IDs, relacionamentos, status, valores monetários e outros domínios. Escolhi uma carga transacional do snapshot completo porque o volume recebido é pequeno; uma falha provoca rollback, sem publicar uma carga parcial.
+
+Converti valores monetários para centavos inteiros e descontos para pontos-base, com regras explícitas de arredondamento. Trato status e quantidade em conjunto na disponibilidade e preservo o total histórico dos pedidos, sem recalculá-lo com preços atuais. As ferramentas usam consultas parametrizadas, conexões somente de leitura e projeções com os campos necessários ao atendimento.
+
+No PDF, extraí e agrupei o texto por seção, preservando páginas e hash do documento. Documentei ambiguidades e lacunas, como frete exatamente em R$ 500, contatos divergentes e ausência de recebimento real nos pedidos. Nesses casos, defini esclarecimento ou confirmação com a equipe, evitando preencher informações ausentes por suposição.
+
 ## Preparar o ambiente
 
 Requer Python 3.11+, Git, Ollama e espaço para o modelo de aproximadamente 5,2 GB. Ambiente validado: Windows, 16 GB de RAM e RTX 4060 com 8 GB de VRAM. Máquinas diferentes podem apresentar latência maior; os testes determinísticos não exigem GPU.
