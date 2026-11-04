@@ -93,7 +93,7 @@ Se estiver usando o pacote portátil sem Ollama no PATH, substitua `ollama` por 
 .\.venv\Scripts\python.exe -m uvicorn emporio_ai.api:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Abra [o chat local](http://127.0.0.1:8000/): a sessão é criada automaticamente. Escreva uma pergunta ou escolha uma sugestão; Enter envia e Shift+Enter insere uma nova linha. Consulte as fontes abaixo da resposta e os bastidores na coluna lateral. O botão **Nova conversa** inicia uma nova conversa após confirmação da exclusão. Não é necessário copiar tokens.
+Abra [o chat local](http://127.0.0.1:8000/): a sessão é criada automaticamente. Escreva uma pergunta ou escolha uma sugestão; Enter envia e Shift+Enter insere uma nova linha. Consulte as fontes abaixo da resposta e os bastidores abaixo do chat. O botão **Nova conversa** inicia uma nova conversa após confirmação da exclusão. Não é necessário copiar tokens.
 
 A aba mantém token e mensagens em `sessionStorage` para retomar após recarregar. Fechar a aba encerra essa persistência local; o histórico do servidor segue sua expiração de 24 horas. Isso não autentica clientes da loja. Veja [interface e tratamento de falhas](docs/interface.md).
 

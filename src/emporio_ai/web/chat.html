@@ -11,23 +11,11 @@
 <body>
 <header><div class="logo"><i aria-hidden="true">♪</i><span>Empório da Música</span></div></header>
 <main class="wrap">
-  <section class="hero" aria-labelledby="title">
+  <section class="hero intro" aria-labelledby="title">
     <span class="pill">Atendimento virtual</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     <h1 id="title">Tire dúvidas sobre estoque, preços e regras da loja em segundos.</h1>
-    <p>Converse com nosso assistente: ele consulta o catálogo local e as políticas da loja (troca, garantia, frete e pagamento) para orientar seu atendimento.</p>
-    <div class="cards">
-      <div class="card"><div class="img" aria-hidden="true">🎸</div><b>Violões e guitarras</b><span>Consulte o catálogo</span></div>
-      <div class="card"><div class="img" aria-hidden="true">🥁</div><b>Bateria e percussão</b><span>Consulte o catálogo</span></div>
-      <div class="card"><div class="img" aria-hidden="true">🎹</div><b>Teclados e pianos</b><span>Consulte o catálogo</span></div>
-    </div>
-    <div class="how"><b>Como funciona:</b> pergunta do cliente → agente consulta o <b>catálogo</b> (dados) e as <b>regras da loja</b> (RAG) → resposta com as fontes consultadas.</div>
-    <section class="trace" aria-labelledby="trace-title">
-      <h3 id="trace-title">Bastidores do agente · última resposta</h3>
-      <div class="tl" id="tl"><div>Nenhuma resposta recebida nesta conversa.</div></div>
-      <details id="technical" hidden><summary>Detalhes técnicos</summary><pre id="metadata"></pre></details>
-    </section>
   </section>
-  <aside class="chat" aria-label="Chat de atendimento">
+  <section class="chat" aria-label="Chat de atendimento">
     <div class="chead">
       <div class="av" aria-hidden="true">♪</div>
       <div class="heading">Assistente Empório da Música<small role="status"><span class="dot off" id="dot" aria-hidden="true"></span><span id="health">Verificando serviço local…</span></small></div>
@@ -47,7 +35,21 @@
       <button id="s" type="submit" disabled>Enviar</button>
       <span id="send-help" class="sr-only">Enter envia. Shift mais Enter insere uma nova linha. Até 2.000 caracteres.</span>
     </form>
-  </aside>
+  </section>
+  <section class="hero supporting" aria-label="Sobre o atendimento e bastidores">
+    <p>Converse com nosso assistente: ele consulta o catálogo local e as políticas da loja (troca, garantia, frete e pagamento) para orientar seu atendimento.</p>
+    <div class="cards">
+      <div class="card"><div class="img" aria-hidden="true">🎸</div><b>Violões e guitarras</b><span>Consulte o catálogo</span></div>
+      <div class="card"><div class="img" aria-hidden="true">🥁</div><b>Bateria e percussão</b><span>Consulte o catálogo</span></div>
+      <div class="card"><div class="img" aria-hidden="true">🎹</div><b>Teclados e pianos</b><span>Consulte o catálogo</span></div>
+    </div>
+    <div class="how"><b>Como funciona:</b> pergunta do cliente → agente consulta o <b>catálogo</b> (dados) e as <b>regras da loja</b> (RAG) → resposta com as fontes consultadas.</div>
+    <section class="trace" aria-labelledby="trace-title">
+      <h3 id="trace-title">Bastidores do agente · última resposta</h3>
+      <div class="tl" id="tl"><div>Nenhuma resposta recebida nesta conversa.</div></div>
+      <details id="technical" hidden><summary>Detalhes técnicos</summary><pre id="metadata"></pre></details>
+    </section>
+  </section>
 </main>
 <footer>Empório da Música · demonstração local · catálogo e políticas dos arquivos do desafio.</footer>
 </body>

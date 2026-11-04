@@ -2,7 +2,7 @@
 
 ## Escopo e origem do layout
 
-O chat em `/` segue o HTML e o print fornecidos pelo candidato: tema escuro, dourado e laranja, duas colunas no desktop e adaptação para tela pequena. Na integração, o candidato ajustou a grade para `grid-template-columns: 1fr 50%`, ampliando o espaço do chat. HTML, CSS e JavaScript são puros e servidos pelo FastAPI na mesma origem das APIs. O protótipo original continha mensagens e preços simulados; esses dados foram removidos. A saudação inicial é estática e não afirma fatos comerciais.
+O chat em `/` segue a identidade do HTML e dos prints fornecidos pelo candidato: tema escuro, dourado e laranja. Na disposição final solicitada, uma coluna central apresenta o título e o chat em toda a largura; apresentação, categorias e bastidores aparecem depois da conversa. A altura do chat se adapta à janela, com limite de 680 px no desktop, preservando a área de leitura e o campo de envio. HTML, CSS e JavaScript são puros e servidos pelo FastAPI na mesma origem das APIs. O protótipo original continha mensagens e preços simulados; esses dados foram removidos. A saudação inicial é estática e não afirma fatos comerciais.
 
 O nome da loja usa Permanent Marker, e títulos usam Oswald. Os arquivos tipográficos são servidos localmente em `/assets/fonts`, com as licenças Apache 2.0 e SIL Open Font License junto aos arquivos. Foram obtidos do Google Fonts e do repositório oficial `google/fonts`. Não há chamada a Google Fonts durante o atendimento nem envio das mensagens para um serviço de layout. O HTML recebe `Cache-Control: no-store` e as URLs de CSS/JavaScript incluem o hash do conteúdo para evitar carregar versões antigas após uma atualização.
 
