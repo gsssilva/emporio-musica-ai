@@ -32,6 +32,17 @@ class ApiTests(unittest.TestCase):
         self.assertIn("text/html", self.client.get("/").headers["content-type"])
         self.assertEqual(self.client.get("/health").json()["status"], "ready")
 
+    def test_chat_shell_assets_and_docs_are_served_together(self):
+        shell = self.client.get("/").text
+        self.assertIn('src="/assets/chat.js"', shell)
+        self.assertIn('href="/assets/chat.css"', shell)
+        self.assertNotIn('fonts.googleapis.com', shell)
+        for asset in ['chat.js', 'chat.css', 'fonts/oswald-500.ttf', 'fonts/oswald-600.ttf', 'fonts/permanent-marker.ttf']:
+            response = self.client.get('/assets/' + asset)
+            self.assertEqual(response.status_code, 200, asset)
+            self.assertTrue(response.content, asset)
+        self.assertEqual(self.client.get('/docs').status_code, 200)
+
     def test_filtered_catalog_and_categories(self):
         self.assertEqual(self.client.get("/api/categories").json()["categories"][0]["category_id"], 5)
         response = self.client.get("/api/products", params={"query": "violoes", "max_price_brl": "90.00"})

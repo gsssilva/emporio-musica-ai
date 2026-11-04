@@ -28,4 +28,4 @@ line-length = 100
 select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
 
 [tool.setuptools.package-data]
-emporio_ai = ["web/*.html", "prompts/*.txt"]
+emporio_ai = ["web/*.html", "web/*.css", "web/*.js", "web/fonts/*.ttf", "web/fonts/*.txt", "prompts/*.txt"]

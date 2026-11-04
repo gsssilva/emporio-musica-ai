@@ -1,4 +1,4 @@
-"""Local demonstration API. Order access is intentionally not exposed yet."""
+"""Local customer-service chat and documented API."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from emporio_ai.commerce import PaymentRuleError
 from emporio_ai.queries import ProductUnavailable, StoreQueries
@@ -29,6 +30,7 @@ def create_app(database: Path | None = None, *, agent=None, sessions=None) -> Fa
     session_store = sessions or SessionStore(database.parent / "sessions.sqlite3" if database is not None else config.sessions_database)
     app = FastAPI(title="Empório da Música", version="0.1.0",
                   description="Agente de atendimento gratuito com modelo local. Crie uma sessão, copie session_id para Authorize (Bearer) e envie mensagens em POST /chat. Não requer chave de API paga.")
+    app.mount("/assets", StaticFiles(directory=Path(__file__).parent / "web"), name="assets")
     app.include_router(conversation_router(customer_agent, session_store, demo_customer_id=config.demo_customer_id))
 
     @app.exception_handler(ProviderUnavailable)
@@ -53,7 +55,7 @@ def create_app(database: Path | None = None, *, agent=None, sessions=None) -> Fa
 
     @app.get("/", include_in_schema=False)
     def home():
-        return RedirectResponse("/docs")
+        return FileResponse(Path(__file__).parent / "web" / "chat.html")
 
     @app.get("/catalogo", include_in_schema=False)
     def catalog_preview():
