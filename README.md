@@ -1,62 +1,22 @@
-# Empório da Música - Assistente de atendimento
+# Empório da Música - AI customer support assistant
 
-Agente em Python para o desafio técnico de AI Engineer da Artefact. Consulta o catálogo da loja fictícia, calcula condições comerciais e recupera políticas com referências ao documento original. A demonstração principal é um chat web servido pela API FastAPI; o Swagger permanece disponível para inspecionar o contrato HTTP.
+I built this Python application for Artefact's **AI Engineer - Full-Stack Generative AI Applications** technical challenge. The assistant answers questions about a fictional music store using the supplied product data and policy manual. My focus is a working, inspectable agent: accurate calculations, traceable evidence, clear limits, and a straightforward way to test conversations.
 
-**Execução local gratuita:** Ollama com `qwen3:8b`, SQLite e Python. Sem chave de API, assinatura, cobrança por tokens ou fallback pago. O computador fornece memória, processamento e energia; o download inicial requer internet.
+**Public repository:** [gsssilva/emporio-musica-ai](https://github.com/gsssilva/emporio-musica-ai).
 
-## O que está implementado
+The runtime uses **Qwen3 8B through local Ollama**, FastAPI, and SQLite. It requires no paid inference API, API key, or subscription. Model downloads require internet access; inference uses the host computer's memory, processing power, and electricity.
 
-- Ingestão validada e transacional dos seis CSVs, com hashes dos originais.
-- Cinco ferramentas tipadas, consultas somente de leitura e cálculos em centavos.
-- Recuperação lexical de 29 trechos do manual, com seção e páginas.
-- Agente com limites de execução, fontes efetivamente consultadas e guardas de negócio explícitas.
-- Sessões isoladas, expiração, exclusão e bloqueio de pedidos sem contexto autorizado.
-- 91 testes Python, 10 testes do cliente JavaScript e avaliação separada de 13 cenários com o modelo local real.
-- Cinco conversas executadas, documentação técnica e geração reproduzível de PDF.
+## Scope
 
-O enunciado permite diferentes interfaces. A escolha foi uma interface de chat simples integrada à API; `/docs` permite inspeção técnica e `/catalogo` preserva uma visualização auxiliar. Não há integração de WhatsApp, ERP, transportadora, checkout ou execução de reembolsos.
+I implemented validated ingestion of all six CSV files, five typed tools, policy retrieval with section and page references, isolated conversation sessions, and a browser chat. Swagger is available for inspecting the HTTP contract. The application does not execute payments, approve returns, update orders, or connect to WhatsApp, an ERP, or a carrier.
 
-## Decisões técnicas e justificativas
+The supplied data, policy quotations, customer-facing interface, and agent persona remain in Portuguese because the fictional store operates in Brazil. I wrote the submission documentation in English. The five English conversation examples are explicitly labelled translations; the original model outputs remain in the evaluation JSON.
 
-### Frameworks e abordagem do agente
+## Run locally
 
-Escolhi uma abordagem híbrida: function calling para consultar dados estruturados e calcular condições comerciais, combinado com RAG lexical para recuperar as políticas da loja. Separei essas responsabilidades porque preços, estoque e pedidos exigem consultas exatas, enquanto regras de atendimento precisam do contexto do manual. Mantive cálculos financeiros e autorização no código Python para reduzir a dependência da interpretação do modelo nessas operações.
+Requirements: Python 3.11+, Git, Ollama, and enough storage for the approximately 5.2 GB model download. The validated environment is Windows with 16 GB RAM and an RTX 4060 with 8 GB VRAM. Other hardware may be slower, particularly without a GPU. Node.js is needed only for the optional frontend tests.
 
-Optei por um ciclo de ferramentas implementado diretamente em Python, com argumentos validados pelo Pydantic e limites de rodadas, chamadas e tempo. Essa escolha me permite inspecionar o fluxo e testar falhas sem adicionar um framework de orquestração ao recorte do desafio. Usei FastAPI para expor o agente, validar as requisições e disponibilizar a documentação interativa.
-
-Para o retrieval, escolhi SQLite FTS5/BM25, normalização de termos e recuperação de seções relacionadas. O manual tem oito páginas; essa solução mantém a infraestrutura pequena e permite rastrear cada trecho à seção e às páginas de origem. Aceitei a limitação de recuperação lexical para paráfrases novas; compararia embeddings com os mesmos cenários antes de acrescentá-los.
-
-Defini um prompt de sistema em português com a persona da loja, obrigação de consultar evidências, tratamento de ambiguidades e recusa de assuntos fora do escopo. Mantive preços e textos de políticas nas fontes consultadas, em vez de copiá-los para o prompt. Registrei a versão do prompt nas respostas e tratei mensagens e trechos recuperados como dados sem autoridade para alterar as instruções. As fontes são anexadas pelo servidor; reconheço que isso comprova sua consulta, mas não garante a interpretação correta de toda frase do modelo.
-
-### Modelo e provedor
-
-Escolhi o Qwen3 8B executado localmente pelo Ollama para atender à restrição de custo e usar chamadas de ferramentas no hardware disponível. O projeto não exige chave de API nem cobrança por tokens. Restrinjo o provedor a loopback e inicio o Ollama com a nuvem desativada, mantendo as conversas na execução local.
-
-Considerei a contrapartida dessa escolha: download dos pesos, consumo de memória e energia e latência dependente do computador. Validei o comportamento com uma avaliação separada usando o modelo real, sem apresentar testes com provedor simulado como evidência de qualidade do LLM. O relatório registra modelo, digest, parâmetros, versão do prompt e revisão do código para permitir conferência.
-
-### Interface de interação
-
-Escolhi uma interface de chat em HTML, CSS e JavaScript puros, servida pelo mesmo FastAPI, para facilitar o envio de mensagens sem copiar tokens de sessão. Adotei o protótipo visual fornecido como referência e integrei as respostas e fontes reais do agente, mantendo o foco em uma UI simples permitida pelo desafio. Servir frontend e API na mesma origem dispensa configuração de CORS; as fontes tipográficas também são locais.
-
-Mantive o Swagger em `/docs` para inspecionar o contrato HTTP, as ferramentas e os metadados, e a visualização de catálogo como recurso auxiliar em `/catalogo`. O chat expõe fontes expansíveis, trilha real e detalhes técnicos recolhidos. A aparência não altera as regras ou a autorização do agente.
-
-### Persistência do histórico de conversa
-
-Implementei sessões e histórico em SQLite porque perguntas de acompanhamento fazem parte da experiência de atendimento. Defini um banco separado para conversas, evitando que a reimportação do catálogo apague o histórico. Cada sessão tem token aleatório, com apenas seu hash persistido, expiração em 24 horas e possibilidade de exclusão.
-
-Limitei o contexto enviado ao modelo aos três pares recentes de mensagens para controlar seu tamanho e o custo computacional local. Aceitei que conversas longas podem perder detalhes antigos. Separei também sessão de conversa de identidade de cliente: o token permite acessar o histórico, mas não autentica pedidos. A identidade usada na demonstração é fixa no servidor e explicitamente simulada.
-
-### Tratamento dos dados
-
-Preservei os arquivos originais e seus hashes para manter a proveniência dos dados. Antes da importação, valido colunas, tipos, IDs, relacionamentos, status, valores monetários e outros domínios. Escolhi uma carga transacional do snapshot completo porque o volume recebido é pequeno; uma falha provoca rollback, sem publicar uma carga parcial.
-
-Converti valores monetários para centavos inteiros e descontos para pontos-base, com regras explícitas de arredondamento. Trato status e quantidade em conjunto na disponibilidade e preservo o total histórico dos pedidos, sem recalculá-lo com preços atuais. As ferramentas usam consultas parametrizadas, conexões somente de leitura e projeções com os campos necessários ao atendimento.
-
-No PDF, extraí e agrupei o texto por seção, preservando páginas e hash do documento. Documentei ambiguidades e lacunas, como frete exatamente em R$ 500, contatos divergentes e ausência de recebimento real nos pedidos. Nesses casos, defini esclarecimento ou confirmação com a equipe, evitando preencher informações ausentes por suposição.
-
-## Preparar o ambiente
-
-Requer Python 3.11+, Git, Ollama e espaço para o modelo de aproximadamente 5,2 GB. Ambiente validado: Windows, 16 GB de RAM e RTX 4060 com 8 GB de VRAM. Máquinas diferentes podem apresentar latência maior; os testes determinísticos não exigem GPU.
+Run these commands in PowerShell:
 
 ```powershell
 git clone https://github.com/gsssilva/emporio-musica-ai.git
@@ -69,114 +29,162 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m emporio_ai index-policies
 ```
 
-Execute sempre na raiz do projeto. `data/` contém os originais; bancos, modelo e conversas locais ficam em `runtime/`, ignorado pelo Git. A ingestão substitui o snapshot em uma transação e recusa bancos desconhecidos.
+I keep the original inputs in `data/`. Generated databases, conversation history, model files, and local configuration belong in `runtime/`, which Git ignores. Ingestion replaces the catalogue snapshot transactionally and rejects incompatible databases.
 
-### Iniciar o modelo
+### Start the model
 
-Instale o [Ollama](https://ollama.com/download) ou use seu pacote portátil oficial em `runtime/tools/ollama/`. Feche outro servidor Ollama antes de iniciar o processo deste projeto na mesma porta. Em um terminal PowerShell:
+Install [Ollama](https://ollama.com/download), or place its official portable Windows package in `runtime/tools/ollama/`. Stop any other Ollama server using port 11434 before starting this project's server. In one terminal:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/start-model.ps1
 ```
 
-O script configura somente seu processo: `127.0.0.1:11434`, nuvem desativada, contexto de 8.192 tokens e modelos em `runtime/ollama-models`. Em outro terminal, baixe o modelo uma vez:
+The script configures its process to use loopback, disable Ollama cloud features, and store models in `runtime/ollama-models`. In another terminal, download the model once:
 
 ```powershell
 ollama pull qwen3:8b
 ```
 
-Se estiver usando o pacote portátil sem Ollama no PATH, substitua `ollama` por `.\runtime\tools\ollama\ollama.exe`. O download é público e não requer chave ou login. Depois do download, as consultas usam os arquivos locais.
+For the portable installation without Ollama on PATH, use `.\runtime\tools\ollama\ollama.exe pull qwen3:8b`. No inference-provider login or key is required. After the download, model requests stay local.
 
-### Iniciar a API
+### Start the API and chat
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn emporio_ai.api:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Abra [o chat local](http://127.0.0.1:8000/): a sessão é criada automaticamente. Escreva uma pergunta ou escolha uma sugestão; Enter envia e Shift+Enter insere uma nova linha. Consulte as fontes abaixo da resposta e os bastidores abaixo do chat. O botão **Nova conversa** inicia uma nova conversa após confirmação da exclusão. Não é necessário copiar tokens.
+Open [the chat](http://127.0.0.1:8000/). It creates a conversation automatically. Enter sends a message; Shift+Enter adds a line. Sources appear below each answer, and the technical panel shows the actual tool trace. **Nova conversa** deletes the current conversation after confirmation and starts another one.
 
-A aba mantém token e mensagens em `sessionStorage` para retomar após recarregar. Fechar a aba encerra essa persistência local; o histórico do servidor segue sua expiração de 24 horas. Isso não autentica clientes da loja. Veja [interface e tratamento de falhas](docs/interface.md).
+The tab stores its token and displayed messages in `sessionStorage` so a reload can resume the conversation. The server keeps history for up to 24 hours. The first inference may take longer while the model loads. `GET /chat/health` checks model availability without generating an answer. Stop the API and model terminals with Ctrl+C.
 
-Para testar o contrato HTTP, abra [a documentação interativa](http://127.0.0.1:8000/docs):
+`.env` is optional; the defaults require no credentials. See `.env.example` for configuration. Order access is blocked by default. For the fictional order demonstration only, set `EMPORIO_DEMO_CUSTOMER_ID=2` on the server and restart the API. This simulated identity is not production authentication and cannot be chosen by the browser or model.
 
-1. Execute `POST /sessions`, sem corpo ou com `{}`.
-2. Copie o `session_id` retornado para **Authorize** como Bearer.
-3. Execute `POST /chat` com `{"message":"Quais violões estão disponíveis até R$ 1000?"}`.
-4. Veja `answer`, `sources`, `tool_trace` e `generation_mode` na resposta.
-5. Use `DELETE /sessions/current` para excluir conversa e histórico.
+To inspect the API in [Swagger](http://127.0.0.1:8000/docs):
 
-Esse token é criado pelo próprio sistema para isolar a conversa, sem qualquer custo. A primeira consulta pode demorar pelo carregamento do modelo. `GET /chat/health` verifica se o modelo está disponível. Encerre os terminais com Ctrl+C.
+1. Execute `POST /sessions` with an empty body or `{}`.
+2. Copy the returned `session_id` into **Authorize** as the Bearer token.
+3. Execute `POST /chat` with the following body.
+4. Inspect `answer`, `sources`, `tool_trace`, `generation_mode`, and `status`.
+5. Execute `DELETE /sessions/current` to remove the conversation.
 
-`.env` é opcional: os padrões funcionam sem credenciais. Use `.env.example` como referência para os caminhos e o modelo. Por padrão, pedidos ficam bloqueados. Somente para demonstração, `EMPORIO_DEMO_CUSTOMER_ID=2` fixa no servidor a identidade fictícia do exemplo de pedido 8; reinicie a API após mudar a configuração. Isso **não é autenticação de produção** nem deve ser definido pelo cliente ou pelo LLM.
+```json
+{"message":"Quais violões estão disponíveis até R$ 1000?"}
+```
 
-## Verificar e avaliar
+The session token is generated by this application; it is not a paid API key or proof of customer identity.
+
+## Technical decisions
+
+### Agent approach and framework
+
+I chose a hybrid approach: function calling for structured data and commercial calculations, and retrieval-augmented generation for store policies. Prices and stock require exact queries; return procedures need the surrounding policy text. I keep authorization and monetary arithmetic in Python rather than delegating them to the model.
+
+I implemented the tool loop directly in Python with Pydantic validation and explicit limits. For this small application, I preferred an inspectable execution path over adding an orchestration framework. FastAPI provides request validation, HTTP endpoints, and OpenAPI documentation. The closed tool registry exposes `search_products`, `get_product`, `quote_payment`, `search_policies`, and `get_order_status`. It exposes no arbitrary SQL or commercial write operation.
+
+### Model and provider
+
+I selected Qwen3 8B through Ollama to support tool calls without a paid inference service on the available hardware. I restricted the provider to loopback and disabled cloud features. The trade-off is a substantial download and hardware-dependent latency. Temperature zero and a fixed seed reduce variation but do not guarantee identical results across machines or runtime versions.
+
+### Retrieval and prompt
+
+I chose SQLite FTS5/BM25 for an eight-page manual. Section-based extraction produces 29 chunks, preserving page references and the original document hash. Title weighting, accent normalization, controlled term expansion, and related-section retrieval provide a small, traceable baseline. I would compare embeddings against this baseline before introducing another retrieval component.
+
+I defined a Portuguese system prompt for the store persona, scope, evidence requirements, and missing-information handling. Prices and policy text come from tools rather than being copied into the prompt. User messages and retrieved content do not receive system authority. Responses identify the prompt version. Server-generated sources establish which records were consulted; they do not prove that every sentence interprets them correctly.
+
+### Interface and history
+
+I chose a small HTML/CSS/JavaScript chat served by FastAPI so an evaluator can send messages without managing session tokens manually. I kept the chat prominent and retained Swagger for technical inspection. The additional catalogue view at `/catalogo` is secondary; I did not expand it into an e-commerce application. Assets and fonts are local, and the frontend shares the API's origin.
+
+I persisted history in a separate SQLite database to support follow-up questions without coupling conversations to catalogue imports. Session tokens are random, only their hashes are stored, and sessions expire after 24 hours. The model receives at most three recent user/assistant pairs. This bounds context size but can lose earlier details. A conversation token grants access to that conversation, not to a customer's orders.
+
+### Data processing
+
+I preserved the original input bytes and SHA-256 hashes. Before a transactional import, I validate schemas, types, IDs, foreign keys, status values, monetary precision, dates, and promotion conflicts. I use integer cents and basis points with explicit rounding. Historical order totals are preserved instead of being recalculated from current prices.
+
+I extract policies by section without rewriting their content. Ambiguities remain visible: conflicting contacts, shipping at exactly R$ 500, small installments, and missing purchase-channel or actual-receipt dates lead to clarification or human confirmation.
+
+## Verification and evidence
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -q
+node --test tests/test_chat_ui.cjs
 .\.venv\Scripts\python.exe scripts/audit_data.py
 .\.venv\Scripts\python.exe scripts/evaluate_agent.py --output runtime/evaluation.json
 ```
 
-Os 91 testes Python verificam regras comerciais, ingestão, retrieval, autorização, sessões, falhas, assets da interface e protocolo do agente com provedor simulado. Os 10 testes adicionais do cliente podem ser executados com `node --test tests/test_chat_ui.cjs`; usam DOM e HTTP substitutos e não exigem instalar pacotes npm. A avaliação final usa Ollama real; não substitui resultados por simulação quando o modelo falha. O [relatório versionado](evals/results.json) contém modelo, digest, prompt, parâmetros, revisão, tempo, fontes e verificações por caso. Os checks automáticos e a revisão das respostas têm limites descritos em [avaliação](docs/avaliacao.md); não representam garantia de precisão em perguntas novas.
+I separate deterministic tests, real-model evaluation, and answer review. The Python suite contains 93 tests covering ingestion, queries, money, retrieval, authorization, sessions, HTTP behavior, assets, and agent safeguards. Ten JavaScript tests exercise client behavior with explicit DOM and HTTP test doubles; they require no npm packages. Neither set measures language-model answer quality.
 
-### Conversas executadas
+The [recorded real-model evaluation](evals/results.json) contains 13 scenarios, with 13 passing their defined automatic checks, at revision `986e4e63339539b80168e2d969af94bfc48eee27`. It records model digest, prompt, settings, timings, answers, sources, and trace. That historical run predates the latest regression fixes and interface changes; I do not present it as a fresh evaluation of those changes or as universal accuracy. See [evaluation and limitations](docs/avaliacao.md).
 
-- [Busca de catálogo](examples/01-catalogo.md)
-- [Promoção e PIX sem cumulatividade](examples/02-promocao-pix.md)
-- [Devolução com contexto ausente](examples/03-devolucao.md)
-- [Pedido com identidade simulada](examples/04-pedido-demo.md)
-- [Assunto fora do escopo](examples/05-fora-de-escopo.md)
+I included five varied conversations, including promotion/payment interaction and a return request with missing context:
 
-Para gerar novamente os cinco exemplos a partir de uma nova execução real:
+- [Catalogue search](examples/01-catalogo.md)
+- [Promotion and PIX](examples/02-promocao-pix.md)
+- [Return eligibility](examples/03-devolucao.md)
+- [Order with simulated identity](examples/04-pedido-demo.md)
+- [Out-of-scope question](examples/05-fora-de-escopo.md)
+
+To export a new real run without overwriting the English translations:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/evaluate_agent.py --output runtime/evaluation.json --examples examples
+.\.venv\Scripts\python.exe scripts/evaluate_agent.py --output runtime/evaluation.json --examples runtime/examples-original
 ```
 
-## Arquitetura e documentação
+## Documentation
 
 ```text
-HTTP / Swagger -> sessão -> agente -> Ollama local
-                            |-> ferramentas validadas -> SQLite de catálogo
-                            |-> cálculos em centavos
-                            |-> retrieval FTS5 -> políticas com seção/página
-                     <- fontes reais + guardas de negócio <- resposta
+Browser / HTTP -> session -> agent -> local Ollama
+                            |-> validated tools -> catalogue SQLite
+                            |-> integer monetary calculations
+                            |-> FTS5 retrieval -> policy sections and pages
+                     <- actual sources and explicit business safeguards
 ```
 
-- [Arquitetura e decisões](docs/arquitetura.md)
-- [Ingestão e proveniência](docs/ingestao.md)
-- [Consultas e condições comerciais](docs/consultas.md)
-- [Recuperação das políticas](docs/retrieval.md)
-- [Agente, privacidade e sessões](docs/agente.md)
-- [Contrato HTTP e demonstração](docs/api-local.md)
-- [Interface visual, sessão e testes](docs/interface.md)
-- [Avaliação e limitações](docs/avaliacao.md)
-- [Entendimento dos requisitos e ambiguidades](docs/entendimento.md)
-- [Auditoria agregada dos CSVs](docs/auditoria-dados.json)
+- [Architecture](docs/arquitetura.md)
+- [Ingestion and provenance](docs/ingestao.md)
+- [Queries and commercial rules](docs/consultas.md)
+- [Policy retrieval](docs/retrieval.md)
+- [Agent, sessions, and privacy](docs/agente.md)
+- [HTTP API](docs/api-local.md)
+- [Chat interface](docs/interface.md)
+- [Evaluation](docs/avaliacao.md)
+- [Requirements and source ambiguities](docs/entendimento.md)
+- [Delivery preparation](docs/plano.md)
+- [Machine-readable data audit](docs/auditoria-dados.json)
 
-`src/emporio_ai/` contém o pacote; `tests/`, os testes; `scripts/`, auditoria, inicialização, avaliação e geração de documentação; `evals/`, cenários e resultados; `examples/`, conversas. O enunciado está em `docs/referencias/`.
+`src/emporio_ai/` contains the Python package; `tests/`, deterministic tests; `scripts/`, setup, audit, evaluation, and PDF tooling; `evals/`, scenarios and recorded results; `examples/`, English translations of five recorded conversations. I retained the supplied challenge in `docs/referencias/` for reference.
 
-## Gerar o PDF de entrega
+## Known limitations
 
-Markdown é a fonte de verdade. O gerador reúne README, documentação técnica e cinco conversas em ordem explícita, com sumário, links e revisão de origem:
+I treat the CSVs as a local snapshot, not live inventory or tracking. An estimated delivery date is not proof of receipt. The agent cannot approve refunds, open support tickets, or verify carrier updates. Products must be active and in stock to be offered as available.
+
+Lexical retrieval may miss unfamiliar wording. A model can omit conditions or make unsupported suggestions even when its source IDs are valid. Explicit safeguards address known rules and observed failures, not every possible hallucination. The recorded out-of-scope and order examples retain imperfections, discussed alongside their transcripts.
+
+This is a local prototype without production customer authentication, TLS termination, deployment operations, or a concurrency SLA. Only one inference runs at a time. History is bounded; expired or deleted sessions cannot be resumed. I bind the API to loopback rather than exposing it publicly.
+
+## What I would do with more time
+
+1. Expand the evaluation set with unseen paraphrases, multi-turn conversations, conflicting instructions, and policy-retrieval checks. I would review answer correctness separately from tool and keyword checks.
+2. Compare hybrid lexical/embedding retrieval against the same labelled questions, measuring relevant-section recall before choosing more infrastructure.
+3. Add real customer authentication and authorization tests before enabling order access outside the simulated demonstration.
+4. Obtain business clarification for ambiguous policies, then add regression tests for the confirmed rules instead of guessing.
+5. Measure cold-start and concurrent-request behavior, improve observability without logging conversation secrets, and add browser accessibility checks before any hosted release.
+
+## How I used AI assistance
+
+I used Codex throughout the project for source analysis, implementation drafts, debugging, test generation, evaluation support, and documentation editing. I also supplied an AI-assisted HTML layout prototype as a visual reference. AI assistance contributed substantially to the code and documentation; I describe that contribution explicitly rather than presenting the repository as unaided work.
+
+I set the scope and the requirement to avoid paid inference, requested changes to the chat experience, and directed the final review against the challenge. My workflow was iterative: discuss a choice, inspect the proposed change, run the relevant checks, and revisit observed failures. The repository includes the resulting corrections, including promotion/PIX consistency, missing return context, retrieval wording, and conversation reset behavior. Deterministic test results and real-model transcripts provide evidence for the implementation; they do not replace my responsibility to understand and explain it.
+
+## Delivery PDF and Git history
+
+Markdown is the source of truth for the delivery document:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[docs]"
 .\.venv\Scripts\python.exe scripts/build_docs.py
 ```
 
-Requer Git no PATH e fontes Markdown commitadas, para registrar uma revisão verificável. O resultado fica em [PDF da documentação](output/pdf/documentacao-projeto.pdf). O manifesto com hashes das fontes fica em `runtime/pdf-sources.json`. O PDF inclui a revisão das fontes; seu próprio commit acontece depois da geração. Renderização e inspeção visual fazem parte da preparação da entrega.
+Git must be on PATH and the Markdown sources must be committed. The builder records their revision and hashes in `runtime/pdf-sources.json`. It combines this README, technical documentation, and the five examples into [the English submission PDF](<output/pdf/Gabriel Silva - AI Engineer - Full-Stack Generative AI Applications.pdf>). The PDF artifact is committed after its source revision.
 
-## Limitações e escolhas
-
-Os CSVs representam o último snapshot importado. Estoque, rastreamento e previsões não consultam serviços externos. Datas estimadas não comprovam recebimento. Produtos descontinuados ou em lançamento não são oferecidos automaticamente mesmo quando há estoque positivo.
-
-O manual tem ambiguidades em contatos, parcelas pequenas e frete exatamente em R$ 500. O atendimento encaminha confirmação nesses casos. Preços e descontos são calculados no código; a elegibilidade de devolução não é presumida sem canal e recebimento real. Fontes consultadas não comprovam automaticamente cada frase do modelo: ele ainda pode omitir nuances ou redigir mal.
-
-A API é um protótipo local, sem autenticação de clientes de produção, TLS, escalabilidade ou operação comercial real. O histórico é limitado a três pares recentes, sessões expiram em 24 horas e o processamento permite uma inferência por vez. Não expor o servidor diretamente à internet.
-
-## Uso de assistência de IA e histórico
-
-Utilizei o Codex na leitura dos materiais, auditoria, decisões, implementação, testes, avaliação das respostas, correções e documentação. Para a interface, forneci um protótipo HTML e um print produzidos com auxílio de outra ferramenta de IA de layouts; o Codex integrou esse visual à API e substituiu as respostas simuladas pelo agente real. Gabriel Silva definiu prioridades, escopo e restrição de custo, e autorizou commits e pushes. O candidato deve revisar o código e compreender as decisões para defendê-las na avaliação. As conversas de exemplo foram executadas com o modelo real; os testes com provedor simulado estão identificados separadamente.
-
-O histórico registra o desenvolvimento progressivo e suas correções. Não foi usado force-push. A entrega solicitada pelo enunciado é o link do repositório; o PDF é um complemento pedido pelo candidato. Prazo informado: terça-feira, 03/11/2026, com horário a conferir no e-mail da seleção. O envio final é realizado pelo candidato.
+I kept progressive commits and did not use force-push. I follow the recruitment email's submission instructions: an English PDF through the supplied Google Form, with the public repository linked in the document. I will keep the submitted repository unchanged after the applicable delivery cutoff, as required by the challenge. Generating or committing the PDF does not itself submit the application.

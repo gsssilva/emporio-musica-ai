@@ -1,64 +1,48 @@
-# Agente local e API de atendimento
+# Agent, sessions, and privacy
 
-## Escopo e custo
+I use local Qwen3 8B through Ollama to interpret store questions, choose tools, and draft answers. I keep evidence handling, authorization, arithmetic, and execution limits in the application.
 
-A aplicação usa exclusivamente Ollama em loopback e o modelo local `qwen3:8b`. Não precisa de chave de API, cartão, assinatura ou créditos por mensagem. Não existe fallback para um provedor pago. O download inicial requer conexão à internet e espaço em disco; a inferência usa o computador onde o serviço está em execução.
+## Provider and cost
 
-O endpoint do provedor aceita somente HTTP em `127.0.0.1`, `localhost` ou `::1`, sem credenciais, caminhos remotos ou tags de modelo de nuvem. O script de inicialização configura `OLLAMA_NO_CLOUD=1`. Variáveis de proxy são ignoradas pelo cliente HTTP para manter as mensagens no serviço local.
+The provider accepts only HTTP loopback endpoints (`127.0.0.1`, `localhost`, or `::1`), rejects credentials and cloud model tags, and ignores proxy environment variables. The startup script sets `OLLAMA_NO_CLOUD=1`. There is no paid fallback, inference API key, or message-based charge.
 
-O Qwen3 8B foi escolhido pelo suporte a ferramentas e pela possibilidade de execução na GPU disponível. O modelo distribuído pelo catálogo possui quantização Q4_K_M e download de aproximadamente 5,2 GB. Isso não garante qualidade: as respostas precisam ser avaliadas nos casos da loja. Em máquinas sem GPU ou com menos memória, a latência pode ser maior.
+The model download is approximately 5.2 GB. I selected it for tool support and the available GPU, accepting hardware-dependent latency and memory requirements. Model availability is not evidence of answer quality.
 
-Referências: [Ollama local](https://docs.ollama.com/quickstart), [Qwen3 8B](https://ollama.com/library/qwen3:8b), [desabilitar nuvem](https://docs.ollama.com/faq), [chamadas de ferramentas](https://docs.ollama.com/capabilities/tool-calling).
+## Execution
 
-## Fluxo do agente
+1. I accept the user message with bounded session history and server-controlled customer context.
+2. Recognized policy questions receive preventive retrieval, identified by `trigger=retrieval`.
+3. The model selects from five tools. Pydantic validates types, limits, and extra fields before execution.
+4. Tool results and actual sources return to the model as data. Another tool round is allowed within the budget.
+5. A final call without tools produces the natural-language answer. The server builds the HTTP envelope and source list.
+6. Evidence checks and explicit business safeguards reject or qualify unsupported results.
 
-1. Recebe mensagem e um histórico curto da sessão, controlado pelo servidor.
-2. O modelo escolhe uma das cinco ferramentas do registro fechado.
-3. Pydantic valida tipos, limites e campos extras. O servidor executa a consulta ou cálculo.
-4. O resultado e suas fontes são enviados ao modelo como dados de ferramenta.
-5. O modelo pode consultar novamente, dentro dos limites de execução. Uma pergunta de pagamento exige cotação. Se o modelo não conclui a busca de alternativas após confirmar indisponibilidade, o servidor executa a consulta de leitura da mesma categoria por uma regra explícita de atendimento.
-6. Uma etapa final sem ferramentas redige a mensagem natural. A estrutura JSON da API e a lista de fontes são montadas e validadas pelo servidor, em vez de depender da classificação do modelo.
-7. A aplicação rejeita referências inexistentes, valida evidência e aplica barreiras de consistência para ambiguidades conhecidas do manual. Uma condição comercial ambígua permanece marcada para confirmação humana.
+The registry contains `search_products`, `get_product`, `quote_payment`, `search_policies`, and `get_order_status`. It has no arbitrary SQL, code execution, network browsing, customer listing, or order-writing tool.
 
-Ferramentas: `search_products`, `get_product`, `quote_payment`, `search_policies` e `get_order_status`. Não há ferramenta genérica de SQL, código, rede, escrita comercial ou listagem de clientes.
+I version the system prompt in `src/emporio_ai/prompts/system.txt`. Responses identify its abbreviated hash, provider, and model. The prompt defines the store persona, scope, evidence requirements, and handling of missing information. User and retrieved text cannot grant new tools or customer access.
 
-O prompt está versionado em `src/emporio_ai/prompts/system.txt`. Cada resposta identifica o hash abreviado desse prompt, modelo, provedor e ferramentas utilizadas. O prompt trata a persona, as fontes, os limites do atendimento e as ambiguidades do manual. Conteúdo de usuário e de fontes não recebe autoridade de instrução do sistema.
+Search accepts natural category wording and budgets in reais; the server resolves categories and converts money. If the model finds an unavailable item but does not finish searching for alternatives, an explicit server rule can query the same category. Alternatives are real available products, not a claim of technical equivalence.
 
-Antes da seleção de ferramentas, dúvidas reconhecidas sobre políticas recebem recuperação lexical preventiva. O registro diferencia esse passo por `trigger=retrieval`; ele não é apresentado como uma escolha do LLM. Perguntas de pedido sem identidade autorizada são bloqueadas pelo servidor antes da inferência.
+Business safeguards use `trigger=business_rule`. They address availability, promotional price disclosure, non-stacking PIX, missing receipt/channel context, warranty timing, expired delivery estimates, and shipping at exactly R$ 500. `generation_mode` distinguishes model output, safeguards, authorization blocks, and safe fallback behavior.
 
-A busca de instrumentos aceita palavras naturais em `query` e orçamento em reais em `max_price_brl`. O servidor converte valores para centavos e resolve categorias a partir dos dados. Isso evita que o modelo invente IDs de categoria ou faça conversões monetárias. IDs de produto continuam sendo validados como inteiros.
+## Execution limits
 
-Guardas de negócio são identificadas por `trigger=business_rule`: frete exatamente em R$ 500 quando a fonte só define acima/abaixo; disponibilidade de produtos por status e quantidade, com alternativas efetivamente consultadas; contexto de garantia e previsões históricas; explicação do PIX derivada da cotação; devolução condicionada ao canal e recebimento real. Essas barreiras implementam restrições explícitas do cenário, sem executar transações comerciais. O campo `generation_mode` distingue inferência, bloqueio de autorização e respostas com guardas.
+I limit each message to 2,000 characters, six tool-selection rounds, eight tool calls, and a final formatting step. The agent has a 240-second total budget, with up to 90 seconds per model request. Context includes at most three recent user/assistant pairs and a global character budget.
 
-## Limites e falhas
+The provider uses temperature zero, seed 42, an 8,192-token context, and up to 1,200 output tokens. These settings do not ensure identical results across runtime versions or hardware. Initial model loading can increase latency.
 
-Máximo de seis rodadas de seleção de ferramentas e oito chamadas por mensagem, com uma etapa final de formatação. Mensagens têm limite de 2.000 caracteres. O contexto recente contém até três pares de mensagens e um limite global de caracteres. A saída do modelo possui limite de tokens.
+A provider failure returns a controlled error, releases the session, and preserves prior history rather than inserting a fabricated answer. Tool-budget or evidence failures produce a controlled status. I do not retry indefinitely.
 
-O prazo total é de 240 segundos no agente, com até 90 segundos por requisição ao modelo e limite de contexto. Não há retentativa automática ilimitada. Falha do provedor retorna 503, preserva o histórico anterior e libera a sessão. Estouro de ferramentas ou referências inválidas produz uma resposta controlada, sem apresentar conteúdo inventado como resultado confirmado.
+## Conversation lifecycle
 
-Temperatura zero, seed 42 e contexto de 8.192 tokens ficam registrados no relatório. A avaliação fixa uma hora de referência por rodada; isso não garante determinismo entre diferentes hardwares.
+`POST /sessions` creates a random 256-bit token. Only its hash is stored. The caller sends it as `Authorization: Bearer <session_id>` for chat and deletion. Sessions expire after 24 hours, allow at most 20 turns, and have a global capacity of 500. A transactional lease prevents concurrent work in one conversation. A semaphore permits only one local inference at a time.
 
-O aquecimento inicial do modelo e os kernels da GPU podem tornar a primeira consulta mais lenta. A avaliação deve registrar essa diferença em vez de prometer uma latência fixa.
+`DELETE /sessions/current` removes the session and its messages. History is stored in ignored `runtime/sessions.sqlite3`. Operational logs record request ID, model, prompt version, duration, and tool counts; they omit full messages, tool arguments, session tokens, and credentials.
 
-## Sessões e pedidos
+## Order access
 
-`POST /sessions` gera um token aleatório de 256 bits. O banco armazena apenas seu hash. O token é uma capacidade de acesso à conversa e deve ser enviado como `Authorization: Bearer <session_id>` em `/chat` e na exclusão da sessão.
+I distinguish a conversation capability from customer identity. Order requests without trusted customer context are blocked before inference. `EMPORIO_DEMO_CUSTOMER_ID` supplies a fixed fictional identity on the server for demonstration only. The request body and model cannot choose or change it. Production use would require real authentication and authorization.
 
-Sessões expiram após 24 horas, têm limite de 20 turnos e capacidade global de 500 sessões. Uma lease transacional impede duas respostas simultâneas na mesma conversa. O endpoint permite somente uma inferência local por vez para não sobrecarregar a GPU. `DELETE /sessions/current` remove a sessão e suas mensagens.
+## Grounding limits
 
-O histórico é persistido em `runtime/sessions.sqlite3`, ignorado pelo Git. Logs registram identificador de requisição, modelo, versão do prompt, duração e contagem de ferramentas, sem texto integral, argumentos, token de sessão ou credenciais.
-
-Esse mecanismo isola conversas, mas **não autentica um cliente da loja**. Por padrão, pedidos ficam bloqueados. `EMPORIO_DEMO_CUSTOMER_ID` permite uma identidade fixa simulada, definida no ambiente do servidor, somente para demonstração. O corpo das requisições e os argumentos do modelo não podem escolher ou alterar esse cliente. Em produção, essa identidade precisaria vir de autenticação real.
-
-## Contrato HTTP
-
-- `POST /sessions`: cria conversa; não aceita `customer_id` no corpo.
-- `POST /chat`: recebe apenas `{ "message": "..." }`, com Bearer da sessão.
-- `DELETE /sessions/current`: apaga o histórico da conversa autorizada.
-- `GET /chat/health`: verifica a disponibilidade do modelo instalado, sem executar inferência.
-
-`/` apresenta o chat visual e cria a sessão automaticamente; `/docs` mantém a demonstração do contrato HTTP. A vitrine fica em `/catalogo` como recurso secundário. O frontend não escolhe identidade de cliente e não altera as ferramentas do agente.
-
-## Limitações de fundamentação
-
-Validar IDs garante que uma fonte citada foi consultada; não comprova que cada frase a interpreta corretamente. O modelo ainda pode resumir mal uma política ou omitir uma condição. As regras determinísticas de disponibilidade e ambiguidades conhecidas são identificadas na trilha; não são apresentadas como texto gerado livremente pelo modelo. Por isso, testes determinísticos verificam as barreiras do sistema, e uma avaliação separada usa o LLM real para revisar a qualidade das respostas. Não apresentar testes com provedor simulado como avaliação do modelo real.
+A valid source ID establishes that the application consulted that record. It does not prove that every sentence is faithful to it. The model may omit a condition or add an unnecessary suggestion. I use deterministic regression tests for safeguards and a separate real-model evaluation for language behavior; I do not present test-double results as model accuracy.

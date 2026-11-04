@@ -1,45 +1,37 @@
-# Consultas de atendimento e condições comerciais
+# Queries and commercial rules
 
-## Componentes disponíveis
+I expose store facts through `StoreQueries`, using SQLite read-only connections and `PRAGMA query_only`. SQL values are parameterized, and each result projects only fields needed by the assistant.
 
-`StoreQueries` recebe o caminho do banco importado e oferece busca de produtos, detalhe de produto, cotação de pagamento e consulta de pedido no contexto de um cliente autorizado pelo servidor. Esses métodos são integrados ao registro tipado do agente e à API local, com bloqueio de pedidos sem identidade autorizada.
+## Catalogue
 
-As conexões usam SQLite em modo somente leitura, também protegido por `PRAGMA query_only`. Identificadores usados nas consultas SQL são parâmetros. Os resultados possuem campos explícitos, para evitar entregar ao modelo uma linha inteira de dados pessoais ou notas internas.
+Search supports text, category, budget, availability, and a limit from 1 to 10 results. I normalize accents and selected Portuguese category plurals. Results are ordered by current price and ID, with total-match and truncation indicators.
 
-## Catálogo
+I define availability as `status == active` and positive stock. Product detail retains the source status so the assistant can explain out-of-stock, discontinued, and upcoming items. A quote for a new purchase requires availability.
 
-A busca admite texto, categoria, orçamento em centavos, disponibilidade e limite de 1 a 10 resultados. Normaliza acentos e alguns plurais das categorias em português. Ordena por preço atual e ID para manter resultados estáveis, informa a quantidade total encontrada e se houve truncamento.
+Only active promotions affect current prices. Results include list price, discount in basis points, and current price. The search budget applies to that current price without assuming PIX payment. For 65 products, applying the final text and price filters in Python avoids SQLite floating-point arithmetic without adding search infrastructure. A larger catalogue would need indexed search and pagination.
 
-O produto está disponível somente quando o status é `active` e o estoque é maior que zero. O detalhe preserva o status original e permite explicar produtos esgotados, descontinuados e em lançamento. Uma cotação para uma nova compra exige disponibilidade.
+## Payment calculations
 
-Somente promoções ativas entram no preço atual. A resposta inclui preço de tabela, percentual em pontos-base e preço atual, antes de condições de pagamento. O filtro de orçamento se refere a esse preço atual, sem presumir pagamento PIX.
+I calculate in integer cents and basis points, rounding half up. Installment remainders go to the first installments so their sum remains exact.
 
-A busca textual e o filtro de preço final são aplicados em Python ao recorte obtido por SQL. Isso evita aritmética de ponto flutuante no SQLite e é suficiente para o snapshot de 65 produtos. Para um catálogo grande, será necessário paginar e indexar a busca, preservando precisão e regras de preço.
+- PIX: 5% off list price when there is no active promotion; no additional PIX discount on an active promotion.
+- Debit and bank slip: one payment at the current price.
+- Credit: 1 to 12 installments; installments 4-6 require at least R$ 80 each, and 7-12 require at least R$ 100 each.
+- Two or three installments with any installment below R$ 50 return `needs_confirmation`, because section 3.1 is ambiguous at this boundary.
+- Combined payment methods are not calculated.
 
-## Pagamento
+I use manual sections 3, 3.1, and 6.2 as business inputs. A quote is not credit approval or a transaction. Promotional communication must show the original price, discount percentage, and promotional price. The response safeguard and product cards make these values explicit when applicable.
 
-Os cálculos usam inteiros em centavos e pontos-base. Descontos são arredondados para o centavo mais próximo, com metade para cima. Parcelas distribuem os centavos restantes entre as primeiras parcelas, preservando a soma exata.
+## Orders and access
 
-- PIX: 5% de desconto sobre a tabela quando não existe promoção ativa. Não acumula com promoção.
-- Débito e boleto: pagamento à vista, pelo preço atual.
-- Crédito: de 1 a 12 parcelas. De 4 a 6 parcelas, mínimo de R$ 80 por parcela. De 7 a 12, mínimo de R$ 100.
-- Em 2 ou 3 parcelas, quando alguma parcela fica abaixo de R$ 50, retornar `needs_confirmation`, devido à redação ambígua da seção 3.1. O agente não deve apresentar esse resultado como condição aprovada.
-- Formas combinadas de pagamento ainda não são calculadas nesta etapa.
+`get_order(order_id, authorized_customer_id=...)` requires customer context supplied by the server. The SQL filters both order and customer. A missing order and another customer's order return the same diagnostic.
 
-As condições descrevem o manual recebido, seções 3, 3.1 e 6.2. Não são simulação de uma transação com adquirente, garantia de aprovação de crédito ou alteração de pedido.
+I return recorded status, historical total, payment method, tracking, estimated delivery, and items. I omit customer name, email, phone, customer ID, and internal notes. Actual receipt and purchase channel remain unknown. A past estimate does not authorize an invented update.
 
-## Pedidos e limite de acesso
+This filter is authorization logic, not customer authentication. The optional fixed environment identity is a clearly labelled simulation; neither model arguments nor the browser can choose it.
 
-`get_order(order_id, authorized_customer_id=...)` exige um contexto de cliente fornecido pela aplicação. A consulta SQL filtra simultaneamente o pedido e o cliente. Pedido inexistente e pedido de outro cliente retornam o mesmo diagnóstico, sem revelar a existência de um registro privado.
+## Freshness and verification
 
-O resultado contém situação registrada, total histórico, forma de pagamento, rastreamento, previsão e itens. Não contém nome do cliente, e-mail, telefone, ID do cliente ou notas internas. Recebimento efetivo e canal de compra são explicitamente desconhecidos. Uma estimativa de entrega nunca é convertida em prova de recebimento.
+Results identify `local_snapshot` and import time. Repeating a query reads the imported database, not an external ERP or carrier.
 
-**Esse filtro não implementa autenticação.** A API estabelece o contexto exclusivamente pelo ambiente do servidor, com identidade simulada opcional. Não aceitar esse identificador como uma escolha livre do usuário ou como argumento gerado pelo modelo. Na demonstração, a identidade simulada é explicitamente identificada.
-
-## Atualidade dos dados
-
-Cada resultado identifica a origem como `local_snapshot` e apresenta o instante de importação. Consultar novamente o SQLite acessa o snapshot atual local, sem consultar ERP ou transportadora externos.
-
-## Verificação
-
-Os testes adicionais cobrem status e estoque em conjunto, promoções, PIX sem cumulatividade, limites de parcelamento, arredondamento, orçamento, truncamento, entrada com texto SQL, contexto de pedido, minimização de dados e bloqueio de gravações nas conexões de consulta.
+Tests cover stock and status together, active promotions, non-stacking PIX, installment boundaries and rounding, budgets, truncation, SQL-like text input, order filtering, minimized fields, and blocked writes.

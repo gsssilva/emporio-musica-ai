@@ -1,27 +1,20 @@
-# Desenvolvimento e preparação da entrega
+# Development and delivery preparation
 
-## Escopo executado
+I kept the implementation focused on the supplied store data and manual: ingestion, commercial queries, policy retrieval, bounded agent execution, conversation sessions, a small chat, and evaluation. The catalogue page is secondary, not a shopping application.
 
-O histórico do Git registra implementação progressiva de ingestão, consultas comerciais, API local, retrieval, agente, sessões e correções orientadas por avaliação real. Commits foram executados com autorização do candidato, sem force-push, exclusivamente no repositório `gsssilva/emporio-musica-ai`.
+## Evidence and revision discipline
 
-O recorte prioriza o agente Python, dados e políticas do desafio. A interface principal é o chat visual, com Swagger para inspeção técnica. A visualização de catálogo é auxiliar; não foi expandida para uma loja virtual. A restrição de custo levou à inferência local com Ollama, sem API paga.
+I use progressive commits for features, fixes, and documentation, with no force-push. Work is confined to `gsssilva/emporio-musica-ai`. I preserve the original source bytes and record import and retrieval provenance. Deterministic tests and recorded real-model evaluation are identified separately; their revision and scope are documented in [evaluation](avaliacao.md).
 
-## Evidências de conclusão
+I used AI assistance substantially in implementation and documentation, as explained in the [README](../README.md). My submission should make that workflow visible and leave the technical reasoning inspectable.
 
-- Validação e importação dos seis CSVs, com preservação dos bytes originais no Git.
-- Consultas somente de leitura, descontos e parcelamento calculados no código.
-- Recuperação do manual por seção e página, com hash de origem.
-- Agente com cinco ferramentas, limites, sessões e bloqueio de pedidos sem contexto autorizado.
-- 91 testes automatizados e rodada de 13 cenários com modelo real, documentada separadamente.
-- Cinco conversas extraídas da avaliação; identidades simuladas identificadas.
-- README e documentação técnica como fontes do gerador de PDF.
+## Final artifact procedure
 
-Resultados e limites estão em [avaliação](avaliacao.md); instruções de reprodução e PDF, no [README](../README.md).
+1. Review the English Markdown sources, commands, limitations, and example translations.
+2. Commit the source documents before building the PDF, so its recorded source revision is verifiable.
+3. Generate the PDF using `scripts/build_docs.py`, render its pages, and inspect layout and links.
+4. Commit the PDF in a subsequent artifact commit, keeping its source revision intact.
+5. Submit the English PDF through the recruitment email's form with the public repository linked inside it.
+6. Keep the submitted repository unchanged after the applicable cutoff.
 
-## Preparação final
-
-As fontes Markdown devem ser commitadas antes de gerar o PDF. O gerador registra a revisão e os hashes das fontes. A preparação inclui renderizar o resultado, conferir páginas e tabelas e publicar o artefato em commit posterior, sem alterar as fontes referenciadas.
-
-O enunciado pede o link do repositório público. O PDF é um complemento solicitado pelo candidato. Não inclui envio automático de e-mail ou publicação de serviço. Gabriel deve revisar a implementação, compreender suas decisões e enviar a entrega no canal da seleção.
-
-Prazo informado: terça-feira, 03/11/2026. O horário exato precisa ser conferido no e-mail do processo. Após o envio, respeitar as restrições de alteração previstas no desafio.
+I do not describe an artifact as submitted until the submission channel confirms it. The application remains a local demonstration; delivery does not include public hosting, external messaging, or commerce operations.

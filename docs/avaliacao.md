@@ -1,71 +1,65 @@
-# Avaliação do agente e limitações
+# Evaluation and limitations
 
-## Método
+I distinguish three kinds of evidence: deterministic tests, recorded conversations with the real local model, and semantic inspection of those answers. A provider test double checks protocol behavior; it does not measure LLM quality. Source and keyword checks alone do not establish complete semantic correctness.
 
-A validação separa três níveis: testes determinísticos de domínio e protocolo; cenários com o modelo real; revisão das mensagens e suas evidências. Um teste com provedor simulado não mede qualidade do LLM. Uma verificação automática de fonte e palavras também não demonstra correção semântica completa.
+## Deterministic checks
 
-Foram executados 91 testes automatizados com `unittest`, cobrindo ingestão e rollback, valores financeiros, status e estoque, promoção inativa, acesso a pedidos, retrieval, sessões, HTTP, limites, falhas de provedor e guardas. A verificação adicional da interface cobre o carregamento do shell, dos arquivos estáticos e das fontes locais, mantendo o Swagger acessível. A avaliação de 13 cenários abaixo é a rodada registrada antes dessa evolução visual; não foi apresentada como nova medição do modelo.
+The current Python suite has 93 tests covering ingestion and rollback, money, status/stock, promotions, order authorization, retrieval, sessions, HTTP behavior, assets, limits, provider failures, and safeguards. Ten JavaScript tests check client behavior with DOM and HTTP doubles. The latest local execution passed both suites. Tests use synthetic CSVs and temporary databases; policy tests also use the supplied manual.
 
-Os testes usam CSVs sintéticos e bancos temporários; os de retrieval também usam o manual fornecido. O ambiente registra um aviso de depreciação do cliente de testes do framework, sem falha dos testes.
+The framework emits a test-client deprecation warning. It does not fail the suite, but I would update that integration when adopting a newer dependency set.
 
-`scripts/evaluate_agent.py` executa os 13 cenários de `evals/cases.json` com o provedor real. Se o modelo não estiver disponível, a execução falha; não há substituição silenciosa por resposta simulada. O relatório contém texto integral, fontes, trilha, checks, duração e modo de geração por cenário. Os cinco exemplos são extraídos dessa execução.
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -q
+node --test tests/test_chat_ui.cjs
+.\.venv\Scripts\python.exe scripts/evaluate_agent.py --output runtime/evaluation.json
+```
 
-## Ambiente e reprodução
+## Recorded real-model run
 
-Modelo `qwen3:8b` no Ollama 0.40.13, execução local em Windows com 16 GB de RAM e RTX 4060 de 8 GB. Temperatura zero, seed 42, contexto de 8.192 tokens e saída limitada a 1.200 tokens. Digest do modelo:
+I retain `evals/results.json` as the original evaluation record. It contains 13 scenarios executed with real local Ollama, without substituting scripted answers on failure. The evaluator records full messages, sources, trace, checks, timings, and generation modes. It calls the agent service directly; HTTP integration is tested separately.
+
+The recorded environment was Windows, 16 GB RAM, RTX 4060 8 GB, Ollama 0.40.13, and `qwen3:8b`. Settings were temperature zero, seed 42, an 8,192-token context, and a 1,200-token output limit. Model digest:
 
 ```text
 500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41
 ```
 
-O hash do prompt, a revisão exata do código e uma hora de referência única para a rodada estão em `evals/results.json`. O relógio fixado contextualiza as respostas; datas do snapshot permanecem históricas. Valores e hashes das fontes são verificáveis na auditoria. Diferentes versões do modelo, runtime, GPU ou dados podem alterar os resultados, mesmo com seed fixa.
+The run began at `2026-11-01T20:55:51.208910+00:00`, at source revision `986e4e63339539b80168e2d969af94bfc48eee27`. The JSON records a fixed reference clock and prompt version. All 13 scenarios passed their specified automatic checks. Among the 12 responses that used inference, median latency was 5.72 seconds, with a 2.69-14.31-second range. The authorization block occurred before inference and is excluded from that estimate. This was not a separate cold-start benchmark.
 
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -q
-.\.venv\Scripts\python.exe scripts/evaluate_agent.py --output runtime/evaluation.json
-```
+I do not describe this historical run as a new measurement of subsequent regression fixes or interface changes. Nor do I equate 13 passing scenarios with universal accuracy. Hardware, model/runtime versions, context, and source changes can affect results.
 
-O avaliador não depende do servidor FastAPI: chama o mesmo serviço de agente e suas ferramentas. A integração HTTP é verificada separadamente com criação de sessão, mensagem ao modelo real, exclusão e rejeição do token revogado.
+| Scenario | Main check |
+| --- | --- |
+| Guitars under R$ 1,000 | Category, budget, availability, and sources |
+| Takamine GD20 | Retrieved price and product detail |
+| Product 96 | Out of stock, with real alternatives |
+| Product 136 | Discontinued despite positive stock |
+| Product 90 with PIX | R$ 1,967.18; no extra 5% on promotion |
+| Address and Saturday hours | Institutional policy evidence |
+| Return after changing one's mind | Ask for channel and actual receipt |
+| Authorized order 8 | Simulated identity and historical estimate |
+| Order without identity | Server block before inference |
+| Defect after 35 days | Warranty context and actual receipt anchor |
+| Napoleon question | Refuse general-topic answering |
+| Customer/SQL injection | No customer listing or arbitrary SQL |
+| Shipping at exactly R$ 500 | Acknowledge an undefined boundary |
 
-## Resultados por cenário
+## What answer inspection revealed
 
-| Cenário | Critério principal | Responsabilidade |
-| --- | --- | --- |
-| Violões até R$ 1.000 | Categoria, disponibilidade, orçamento e evidência | Busca selecionada pelo LLM; filtro no servidor |
-| Takamine GD20 | Preço e características do produto consultado | Ferramenta e redação pelo LLM |
-| Produto 96 | Sem estoque; alternativas reais | LLM consulta; servidor garante disponibilidade e alternativas |
-| Produto 136 | Descontinuado mesmo com 13 unidades | LLM consulta; guarda de status/estoque |
-| Produto 90 no PIX | Total R$ 1.967,18; sem somar 5% à promoção | Cotação e explicação determinísticas |
-| Endereço e sábado | Fonte institucional e horário | Retrieval e redação pelo LLM |
-| Arrependimento | Pedir canal e recebimento real | Retrieval e guarda de contexto ausente |
-| Pedido 8 autorizado | Identidade simulada; previsão passada | Consulta filtrada; contexto histórico e encaminhamento |
-| Pedido sem identidade | Nenhum dado privado exposto | Bloqueio no servidor antes da inferência |
-| Defeito após 35 dias | Considerar 90 dias desde recebimento | Políticas relacionadas e guarda de garantia |
-| Pergunta sobre Napoleão | Redirecionar para atendimento da loja | Recusa pelo LLM |
-| Injeção para listar clientes/SQL | Não ampliar acesso ou executar código | Registro fechado e recusa pelo LLM |
-| Frete exatamente R$ 500 | Manual não define igualdade | Retrieval e guarda de ambiguidade |
+I use answer inspection to look beyond passing checks. In development, a correct PIX total was accompanied by an incorrect explanation of stacked discounts. A return answer also assumed missing eligibility context. Explicit safeguards now derive the PIX explanation from the quote and request purchase channel and actual receipt. Warranty checks require the receipt anchor rather than merely mentioning 90 days.
 
-Na rodada final, os 13 cenários passaram nos checks automáticos (13/13). Revisão do código: `986e4e63339539b80168e2d969af94bfc48eee27`; início em `2026-11-01T20:55:51.208910+00:00`. Entre as 12 respostas com inferência, a mediana foi 5.72 segundos, com mínimo de 2.69 e máximo de 14.31; o caso de autorização foi bloqueado antes do modelo. Esses tempos são desta execução e não incluem um benchmark separado de partida fria. A contagem e os tempos completos estão no relatório versionado. O resultado deve ser descrito como aprovação das verificações desses cenários, nunca como precisão universal. Bloqueio de autorização não é uma inferência do modelo; sua latência quase nula não deve entrar na estimativa de geração.
+Later review identified two further gaps: promotional communication needed original price and percentage as well as the final price, and complaint paraphrases needed better retrieval of section 7.3. Regression tests cover the resulting changes. These fixes apply to retrieved facts and policy sections rather than memorizing particular example IDs.
 
-## Revisão das respostas
+I preserve imperfections in the historical transcripts. The order example states that the item was shipped on a date even though the snapshot's order date does not prove a shipment date. The out-of-scope example unnecessarily offers an external history reference. The original promotion example omits the original price and percentage. Automatic checks did not establish these details, so I explicitly flag them rather than polishing the transcripts into false evidence.
 
-A revisão verifica produtos, preços, condições, fontes e ausência de afirmações comerciais sem autorização. Ela é necessária porque checks de palavras podem aprovar uma mensagem contraditória. Dois exemplos concretos motivaram regressões: o modelo chegou a dizer que o total incluía promoção e PIX somados apesar de a cotação estar correta; também presumiu prazo de arrependimento sem conhecer canal e recebimento. O servidor agora deriva a explicação do PIX da cotação e pede o contexto da devolução. Outra regressão verifica que mencionar 90 dias não basta sem o marco do recebimento.
+The five English examples are translations for the submission, not claims that the model produced those English messages. The original Portuguese answers remain in the versioned JSON. The order example uses a fixed fictional identity, not real authentication.
 
-Essas correções tratam comportamento do domínio, não memorizam IDs dos cenários: aplicam-se à cotação consultada e às seções relevantes. Guardas são identificadas em `tool_trace` e `generation_mode`. Perguntas de catálogo, informações da loja, seleção de ferramentas e recusas continuam exercitando o LLM real.
+## Limits and next steps
 
-Os exemplos preservam as mensagens executadas. Não foram reescritos para esconder falhas do modelo. A conversa de pedido usa identidade fictícia explicitamente simulada no servidor. A avaliação utiliza somente arquivos do desafio e não envia mensagens para serviços externos de inferência.
+Lexical retrieval can miss unfamiliar paraphrases. The model can omit conditions, overstate data, or add an ungrounded suggestion. Source provenance is necessary but insufficient to prove every claim. Alternatives are same-category suggestions, not verified technical equivalents.
 
-## Limitações observadas
+The supplied orders lack purchase channel and actual receipt dates. The data are snapshots, with no live carrier or ERP update. Ambiguous contacts, small installments, and the exact shipping threshold need business clarification. I do not approve returns or deny rights automatically.
 
-- A busca lexical pode perder paráfrases e intenções não reconhecidas. Os 13 cenários não cobrem toda a linguagem de clientes.
-- O LLM pode oferecer sugestões fora da fonte ou omitir condições; validação de IDs não prova cada frase. As guardas cobrem restrições explícitas e falhas observadas, sem garantia geral de ausência de alucinação.
-- As alternativas são da mesma categoria, sem demonstrar equivalência técnica completa entre instrumentos.
-- A recusa fora de escopo pode oferecer ajuda adicional desnecessária; ela não executa buscas externas nem responde o assunto geral.
-- O aquecimento e o hardware afetam latência. Não há benchmark de concorrência ou SLA; uma inferência por vez protege a execução local.
-- Pedidos não têm canal de compra ou recebimento real. Não há base suficiente para aprovar direitos ou negar garantia automaticamente.
-- Os dados e as políticas são snapshots; não existe estoque ou rastreamento externo em tempo real.
-- A identidade de demonstração não é autenticação de produção. O serviço foi preparado para uso local.
+I would prioritize unseen paraphrases, multi-turn cases, claim-level review, and labelled retrieval recall, followed by comparison with embedding retrieval. Before a hosted release, I would add real authentication, concurrency/cold-start measurements, operational monitoring, and broader browser accessibility checks.
 
-## Custos
-
-Nenhuma chamada paga foi feita na avaliação. O runtime usa modelo local, sem chave de API, login em provedor de inferência ou fallback comercial. Dependências e pesos exigem download; armazenamento, processamento e energia são fornecidos pelo computador. Não foi contratado serviço de hospedagem.
+No paid inference calls or hosting service were used for the recorded evaluation. Download, storage, hardware, and electricity are still required.

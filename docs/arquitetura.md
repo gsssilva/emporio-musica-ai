@@ -1,64 +1,48 @@
-# Arquitetura e decisões
+# Architecture and design rationale
 
-O sistema implementa um agente híbrido: ferramentas para fatos estruturados e recuperação de trechos para políticas. O LLM interpreta a pergunta e escolhe consultas. A aplicação controla acesso, valida argumentos, calcula valores e aplica restrições explícitas do domínio.
+I separated natural-language interpretation from operations that require exact results. The model chooses tools and drafts answers; Python controls access, validates inputs, calculates money, and applies explicit business safeguards.
 
-## Fluxo implementado
+## Request flow
 
 ```text
-Chat HTML / cliente HTTP / Swagger
-  -> FastAPI: validação e token de sessão
-  -> histórico limitado + contexto de cliente definido no servidor
-  -> recuperação preventiva de políticas quando pertinente
-  -> Ollama: seleção de ferramentas
-  -> registro fechado: Pydantic + consultas parametrizadas
-     -> catálogo / pedido autorizado: SQLite somente de leitura
-     -> condições comerciais: centavos e pontos-base
-     -> políticas: FTS5/BM25 com seção e página
-  -> Ollama: redação final em linguagem natural
-  -> validação de referências + guardas de negócio identificadas
-  -> resposta, fontes reais, trilha, modelo e versão do prompt
+Chat / Swagger / HTTP client
+  -> FastAPI validation and conversation token
+  -> bounded history and server-controlled customer context
+  -> preventive policy retrieval when relevant
+  -> local Ollama tool selection
+  -> closed Pydantic tool registry
+     -> read-only catalogue and authorized order queries
+     -> integer monetary calculations
+     -> FTS5 policy retrieval with section/page provenance
+  -> final natural-language answer
+  -> evidence checks and identified business safeguards
+  -> answer, sources, trace, model and prompt metadata
 ```
 
-## Python e API documentada
+I chose FastAPI for validation and OpenAPI, with a small same-origin browser chat. The agent service can also run without HTTP, as it does in the evaluation script. I did not need a separate orchestration framework for five tools and a bounded loop.
 
-FastAPI fornece validação e OpenAPI. Um chat em HTML, CSS e JavaScript, servido em `/`, automatiza a sessão e exibe mensagens, evidências e trilha; `/docs` permite inspecionar o contrato HTTP. O enunciado admite alternativas de interface e não exige simulação de e-commerce. `/catalogo` é uma visualização secundária já existente. Fontes tipográficas são locais e o navegador não interpreta HTML nas respostas do modelo. O domínio funciona sem a interface HTTP, como mostra o avaliador de cenários.
+## Storage and tools
 
-## SQLite e regras determinísticas
+I use three SQLite databases: catalogue, policy index, and conversations. This keeps catalogue imports from deleting history or policies. The received CSVs contain 191 operational records, so a transactional snapshot import and small local queries fit the problem.
 
-O conjunto recebido contém 191 registros operacionais, compatíveis com banco local. A ingestão valida esquema, relacionamentos, domínios e valores antes de publicar o snapshot em transação. Valores monetários usam `Decimal` na entrada e centavos inteiros nos cálculos; descontos usam pontos-base e arredondamento explícito.
+I expose `search_products`, `get_product`, `quote_payment`, `search_policies`, and `get_order_status`. Pydantic rejects extra arguments and invalid types. The server resolves categories from the catalogue and supplies customer identity independently of model arguments. Query connections are read-only, SQL is parameterized, and returned fields are explicit. No tool accepts arbitrary SQL, lists customers, or changes orders.
 
-Catálogo, políticas e sessões ficam em três bancos distintos. Reimportar dados não elimina conversas nem o índice de políticas. Consultas de atendimento usam conexão somente de leitura, SQL parametrizado e projeções com campos mínimos. Não existe ferramenta que aceite SQL livre ou escreva em pedidos.
+I parse monetary inputs with `Decimal`, then calculate in integer cents and basis points. This avoids floating-point discrepancies and keeps installment totals exact. I preserve historical order totals rather than applying today's catalogue prices retroactively.
 
-As ferramentas são `search_products`, `get_product`, `quote_payment`, `search_policies` e `get_order_status`. Argumentos extras e tipos incorretos são rejeitados. Categorias são resolvidas pelo servidor a partir do catálogo, sem exigir que o modelo invente IDs. A identidade autorizada de cliente não é um argumento do modelo.
+## Retrieval and inference
 
-## Retrieval lexical
+I chose FTS5/BM25 because the manual has eight pages. The index has 29 section-based chunks with original page numbers and a document hash. Controlled term expansion and related sections improve context without rewriting policies. Lexical retrieval remains vulnerable to unfamiliar phrasing; I would benchmark embeddings before adding them.
 
-O manual tem oito páginas. `pypdf` extrai o texto e o indexador agrupa 29 trechos por seção, preservando páginas e hash do original. SQLite FTS5/BM25, normalização de acentos e expansão controlada de termos recuperam texto com baixa complexidade operacional. Seções relacionadas evitam interpretar troca sem garantia ou exceções.
+I run Qwen3 8B through Ollama on loopback, with cloud features disabled and no paid fallback. The provider ignores proxy configuration and rejects remote endpoints. A fixed seed and temperature zero support repeatability, not cross-hardware determinism.
 
-Embeddings não foram necessários para os cenários avaliados. A busca lexical pode falhar em paráfrases novas; uma evolução deve comparar recuperação com o mesmo conjunto de perguntas antes de adicionar infraestrutura. Catálogo e pedidos exigem consultas exatas, não busca vetorial para calcular preços ou autorizar acesso.
+## Evidence and safeguards
 
-## Modelo local e custo
+I keep prompt instructions separate from user and retrieved content. The server attaches actual sources and rejects unknown references. Preventive retrieval and deterministic business rules have explicit trace markers, so they are distinguishable from model-selected tool calls.
 
-Ollama com `qwen3:8b` executa chamadas de ferramentas no próprio computador. O cliente aceita somente loopback, ignora proxies e recusa modelos de nuvem; o script configura nuvem desativada. Sem API paga, chave, cobrança por tokens ou fallback externo. O custo operacional é o uso do hardware e da energia existentes.
+Safeguards cover known issues such as status/stock availability, PIX and promotion consistency, promotion disclosure, missing return context, warranty timing, historical delivery estimates, and ambiguous shipping thresholds. They do not prove every sentence is correct. I therefore separate domain tests from real-model evaluation and discuss imperfect outputs openly.
 
-O provedor é separado do agente. Testes de protocolo usam um substituto explicitamente identificado; a avaliação real registra digest, versão do servidor, prompt, parâmetros e revisão. Temperatura zero e seed fixa reduzem variação, sem prometer igualdade entre diferentes GPUs ou versões.
+## Sessions and operational boundaries
 
-## Evidências e guardas
+I store only hashes of random conversation tokens. Sessions expire after 24 hours and can be deleted. A transactional lease prevents simultaneous writes within one conversation; an inference semaphore protects the local model. Logs contain operational metadata rather than full messages or session tokens.
 
-O prompt em português define persona, escopo e obrigação de consultar fatos. Conteúdo recuperado e mensagens do usuário permanecem dados, sem autoridade de sistema. Fontes são anexadas pelo servidor a partir das ferramentas; referências inexistentes são rejeitadas.
-
-Preços, PIX, disponibilidade por status/estoque, contexto de devolução e ambiguidades conhecidas recebem guardas determinísticas. A trilha distingue chamadas do modelo, recuperação preventiva e regras de negócio. Essa separação preserva auditabilidade: uma resposta com guarda não é apresentada como geração livre do modelo.
-
-Validar a origem não comprova a interpretação de toda frase. O relatório separa checks automáticos de revisão semântica. Faltas de informação levam a esclarecimento ou confirmação humana, sem aprovar devolução, concessão comercial ou pagamento.
-
-## Sessões, privacidade e operação
-
-Tokens aleatórios de conversa têm apenas hashes persistidos; expiram em 24 horas e permitem exclusão. Lease transacional impede concorrência na mesma sessão; um semáforo limita a inferência local a uma por vez. Há limites de mensagens, contexto, rodadas, ferramentas e tempo.
-
-O token de conversa não autentica cliente da loja. Sem identidade confiável, pedidos são bloqueados. A demonstração admite identidade fixa no ambiente do servidor, explicitamente simulada. Ferramentas de pedido filtram simultaneamente pedido e cliente e omitem dados pessoais.
-
-Logs operacionais registram requisição, modelo, prompt, duração e quantidade de chamadas; não registram mensagens completas ou tokens de conversa. Bancos e configurações locais são ignorados pelo Git. A API fica vinculada a `127.0.0.1`.
-
-## Limites do recorte
-
-Sem ERP, WhatsApp, transportadora, processamento de pagamento, alteração de estoque, cancelamento ou reembolso. Os dados são snapshots. Autenticação real, publicação externa, monitoramento de produção e escalabilidade exigiriam outro trabalho. A decisão mantém o foco no agente, nas fontes e na reprodução do desafio.
+A conversation token does not authenticate a store customer. Order access is blocked unless the server supplies a trusted context. The optional fixed demo identity is explicitly simulated. Production authentication, deployment, external commerce integrations, and scalable inference are outside this submission.

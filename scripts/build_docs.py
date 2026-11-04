@@ -60,7 +60,7 @@ def git_value(*args: str) -> str:
         return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True,
                                        stderr=subprocess.DEVNULL).strip()
     except (OSError, subprocess.CalledProcessError):
-        return "não disponível"
+        return "not available"
 
 
 class DeliveryDocument(BaseDocTemplate):
@@ -78,16 +78,16 @@ class DeliveryDocument(BaseDocTemplate):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT / "output/pdf/documentacao-projeto.pdf")
-    parser.add_argument("--allow-dirty", action="store_true", help="Permitir fontes Markdown com alterações não commitadas")
+    parser.add_argument("--output", type=Path, default=ROOT / "output/pdf/Gabriel Silva - AI Engineer - Full-Stack Generative AI Applications.pdf")
+    parser.add_argument("--allow-dirty", action="store_true", help="Allow uncommitted Markdown sources")
     args = parser.parse_args()
     for name in DOCUMENTS:
         if not (ROOT / name).is_file():
-            parser.error("Fonte ausente: " + name)
+            parser.error("Missing source: " + name)
     if not args.allow_dirty:
         dirty = git_value("status", "--porcelain", "--", *DOCUMENTS)
         if dirty:
-            parser.error("As fontes precisam estar commitadas para registrar uma revisão verificável.")
+            parser.error("Commit the Markdown sources first to record a verifiable revision.")
     revision, timestamp = git_value("rev-parse", "HEAD"), git_value("show", "-s", "--format=%cI", "HEAD")
     body, bold, mono = register_fonts()
     styles = getSampleStyleSheet()
@@ -110,7 +110,7 @@ def main() -> int:
             label, target = match[1], match[2].strip("<>")
             if not target.startswith(("https://", "http://")):
                 resolved = (Path(source).parent / target).as_posix()
-                ref = "main" if resolved == "output/pdf/documentacao-projeto.pdf" else revision
+                ref = "main" if resolved == "output/pdf/Gabriel Silva - AI Engineer - Full-Stack Generative AI Applications.pdf" else revision
                 target = "https://github.com/gsssilva/emporio-musica-ai/blob/" + ref + "/" + quote(resolved)
             index = len(links)
             links.append('<link href="' + html.escape(target, quote=True) + '" color="#245c49">' + html.escape(label) + '</link>')
@@ -130,27 +130,27 @@ def main() -> int:
         canv.line(50, 40, width - 50, 40)
         canv.setFont(body, 7.5)
         canv.setFillColor(MUTED)
-        canv.drawString(50, 27, "Empório da Música - Documentação técnica")
-        canv.drawRightString(width - 50, 27, "Página " + str(doc.page))
+        canv.drawString(50, 27, "Empório da Música - Technical documentation")
+        canv.drawRightString(width - 50, 27, "Page " + str(doc.page))
         canv.restoreState()
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    document = DeliveryDocument(str(args.output), pagesize=A4, title="Empório da Música - Documentação do projeto",
+    document = DeliveryDocument(str(args.output), pagesize=A4, title="Empório da Música - Project documentation",
                                 author="Gabriel Silva", leftMargin=50, rightMargin=50, topMargin=48, bottomMargin=54)
     document.addPageTemplates(PageTemplate(id="Main", frames=[Frame(50, 54, content_width, height - 102, leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)], onPage=footer))
     story = [Spacer(1, 65), Paragraph("EMPÓRIO DA MÚSICA", ParagraphStyle("CoverLabel", fontName=bold, fontSize=12, leading=18, textColor=GREEN)),
-             Spacer(1, 18), Paragraph("Agente de atendimento<br/>com IA generativa", ParagraphStyle("CoverTitle", fontName=bold, fontSize=32, leading=39, textColor=INK)),
-             Spacer(1, 20), Paragraph("Desafio técnico - AI Engineer", styles["DocH2"]),
-             Paragraph("Python, consultas estruturadas e recuperação de políticas com um modelo executado localmente.", styles["DocBody"]),
+             Spacer(1, 18), Paragraph("Generative AI<br/>support assistant", ParagraphStyle("CoverTitle", fontName=bold, fontSize=32, leading=39, textColor=INK)),
+             Spacer(1, 20), Paragraph("Technical challenge - AI Engineer", styles["DocH2"]),
+             Paragraph("Python, structured queries, and policy retrieval with a locally executed model.", styles["DocBody"]),
              Spacer(1, 34), Paragraph("Gabriel Silva", styles["DocH2"]),
-             Paragraph("Modelo: Qwen3 8B via Ollama. Sem API de LLM paga.", styles["DocBody"]),
-             Paragraph("Revisão das fontes: " + html.escape(revision), styles["DocSmall"]),
-             Paragraph("Data da revisão: " + html.escape(timestamp), styles["DocSmall"]),
-             Spacer(1, 24), Paragraph("Documento gerado a partir do README, da documentação técnica e dos cinco exemplos de interação versionados no repositório.", styles["DocBody"]),
+             Paragraph("Model: Qwen3 8B through Ollama. No paid inference API.", styles["DocBody"]),
+             Paragraph("Source revision: " + html.escape(revision), styles["DocSmall"]),
+             Paragraph("Revision timestamp: " + html.escape(timestamp), styles["DocSmall"]),
+             Spacer(1, 24), Paragraph("I prepared this submission from the versioned README, technical documentation, and five labelled translations of recorded conversations.", styles["DocBody"]),
              Paragraph('<link href="https://github.com/gsssilva/emporio-musica-ai" color="#245c49">github.com/gsssilva/emporio-musica-ai</link>', styles["DocBody"]), PageBreak()]
     toc = TableOfContents()
     toc.levelStyles = [ParagraphStyle("Contents", fontName=body, fontSize=10, leading=17, leftIndent=0, firstLineIndent=0, spaceBefore=5, textColor=INK)]
-    story += [Paragraph("Conteúdo", styles["DocH2"]), Spacer(1, 10), toc, PageBreak()]
+    story += [Paragraph("Contents", styles["DocH2"]), Spacer(1, 10), toc, PageBreak()]
 
     manifest = {}
     for position, name in enumerate(DOCUMENTS):
@@ -179,7 +179,7 @@ def main() -> int:
             if match:
                 title = match[2]
                 if name.startswith("examples/") and len(match[1]) == 1:
-                    title = "Exemplo " + Path(name).stem.replace("-", " ")
+                    title = match[2]
                 style = "DocH1" if len(match[1]) == 1 else "DocH2" if len(match[1]) == 2 else "DocH3"
                 story.append(Paragraph(inline(title, name), styles[style]))
                 index += 1

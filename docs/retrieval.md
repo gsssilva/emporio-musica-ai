@@ -1,15 +1,21 @@
-# Recuperação das políticas
+# Policy retrieval
 
-O comando `python -m emporio_ai index-policies` extrai o manual com pypdf e cria `runtime/policies.sqlite3`. O índice é separado do catálogo para que uma recarga dos CSVs não elimine as políticas.
+I index the supplied manual with `python -m emporio_ai index-policies`. `pypdf` extracts text into a separate policy database so catalogue imports cannot remove the index.
 
-A segmentação segue as seções do documento, preserva listas e mantém páginas múltiplas quando uma seção atravessa uma quebra. Cabeçalhos e rodapés repetidos são removidos. O manual fornecido produz 29 trechos: capa e 28 seções. A capa é mantida porque contém informações de contato que divergem da tabela institucional.
+## Preparing the source
 
-Cada fonte contém identificador estável, seção, título, páginas, nome do documento e SHA-256 dos bytes de origem. Os trechos não são reescritos pelo modelo. A indexação constrói um arquivo temporário e substitui o índice somente após finalizar a nova versão.
+I segment by document section, preserve lists, and retain all source pages when a section crosses a page break. I remove repeated headers and footers without rewriting policy content. The eight-page manual produces 29 chunks: its cover and 28 sections. I retain the cover because its contact details differ from the institutional table.
 
-A busca usa SQLite FTS5 e BM25, com peso maior no título, normalização de acentos, remoção de palavras pouco informativas e expansão pequena de sinônimos em português. Termos são sanitizados antes da expressão FTS. Retorna até cinco resultados primários, acrescidos de seções relacionadas, com limite total de dez.
+Each source includes a stable ID, section, title, pages, document name, and SHA-256 hash of the original bytes. Indexing builds a temporary database and replaces the existing index only after the new version is complete.
 
-As relações explícitas preservam contexto importante: arrependimento e exceções; defeito e garantia; pagamento e cumulatividade; contatos institucionais, capa e canal de WhatsApp. Essas relações não decidem direitos do cliente: apenas entregam contexto para uma resposta cuidadosa.
+## Search strategy
 
-Uma consulta sem correspondência retorna uma lista vazia. Correspondência lexical não é probabilidade de correção. A avaliação inclui perguntas com paráfrases e casos fora de escopo; embeddings só devem ser adicionados se trouxerem melhora demonstrável sobre essa base.
+I use SQLite FTS5/BM25 with stronger title weighting, accent normalization, stop-word filtering, and controlled Portuguese term expansion. Search terms are sanitized before forming an FTS expression. Search returns at most five primary matches plus related sections, with a total cap of ten.
 
-Os testes verificam proveniência, seções, continuidade entre páginas, preservação dos procedimentos numerados, contexto relacionado, consultas inválidas e reconstrução sem duplicatas. O índice não chama um LLM.
+I explicitly relate return eligibility to exceptions, defects to warranty, payment to promotion rules, and contact sections to the cover and WhatsApp channel. Complaint wording also retrieves the complaint procedure and its related context. These relationships supply evidence; they do not approve a customer's claim.
+
+An unmatched query returns an empty list. A lexical ranking score is not a probability of correctness. I would evaluate relevant-section recall on unseen paraphrases before adopting embeddings or a hybrid retriever.
+
+## Verification and limits
+
+I test provenance, section boundaries, cross-page continuity, numbered procedures, related context, invalid queries, rebuilds without duplicates, and complaint paraphrases. Indexing does not call an LLM. The approach remains sensitive to vocabulary, so a retrieved source must still be checked for relevance and correctly interpreted in the final answer.
