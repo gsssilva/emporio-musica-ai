@@ -96,7 +96,8 @@ class AgentTests(ToolFixture):
         result = CustomerAgent(provider, self.registry).respond("Quanto custa o produto 81?")
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["sources"][0]["id"], "catalog:81")
-        self.assertEqual(result["tool_trace"], [{"tool": "get_product", "ok": True}])
+        self.assertEqual(result["tool_trace"][0], {"tool": "get_product", "ok": True})
+        self.assertTrue(any(item["tool"] == "promotion_disclosure_guard" for item in result["tool_trace"]))
         self.assertTrue(any(message["role"] == "tool" for message in provider.requests[-1][0]))
 
     def test_invalid_citation_is_not_returned(self):
@@ -253,3 +254,12 @@ class AgentTests(ToolFixture):
         self.assertIn("recebimento real", result["answer"])
         self.assertNotIn("vale desde a compra", result["answer"])
         self.assertEqual(result["kind"], "needs_human")
+
+    def test_promoted_product_discloses_table_price_percentage_and_current_price(self):
+        provider = ScriptedProvider([tool_call("get_product", {"product_id": 81}),
+                                     {"role": "assistant", "content": "draft"},
+                                     final("Preço promocional: R$ 89,59.", ["catalog:81"])])
+        result = CustomerAgent(provider, self.registry).respond("Quanto custa o produto 81?")
+        self.assertIn("100,10", result["answer"])
+        self.assertIn("10,5%", result["answer"])
+        self.assertIn("89,59", result["answer"])

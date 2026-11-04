@@ -15,6 +15,9 @@ from pypdf import PdfReader
 
 STOPWORDS = set("a o as os de da do das dos em no na nos nas um uma e ou que qual quais como para por com se eu me meu minha posso tem sobre voce voces sao ao ate ja foi mais uma quero saber loja musica emporio todos todas produto produtos".split())
 EXPANSIONS = {
+    "errado": "reclamacao", "errada": "reclamacao",
+    "insatisfeito": "reclamacao", "insatisfeita": "reclamacao",
+    "reclamar": "reclamacao", "reclamacoes": "reclamacao",
     "clientes": "privacidade", "emails": "email mail", "telefones": "telefone",
     "devolver": "devolucoes arrependimento", "devolucao": "devolucoes arrependimento",
     "devolucoes": "arrependimento", "arrependi": "arrependimento",
@@ -32,6 +35,7 @@ RELATED = {
     "4.3": ["4.4"], "4.4": ["4.1"], "8.1": ["4.2"],
     "8.2": ["8.1", "4.2"], "8.3": ["8.1", "4.2"],
     "3": ["3.1", "6.2"], "3.1": ["3", "6.2"], "6.2": ["3.1"],
+    "7.3": ["7.2", "7"],
     "1.2": ["cover", "7"], "7": ["1.2", "cover"],
 }
 

@@ -99,7 +99,11 @@
     for (const p of products) {
       const card = element('div', 'prod');
       const label = element('span');
-      label.append(element('span', 'product-name', p.name), element('small', '', (p.current_price_cents / 100).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})));
+      const money = cents => (cents / 100).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+      const price = p.promotion_bps > 0 && Number.isSafeInteger(p.table_price_cents)
+        ? `De ${money(p.table_price_cents)} por ${money(p.current_price_cents)} (${(p.promotion_bps / 100).toLocaleString('pt-BR')}% de desconto)`
+        : money(p.current_price_cents);
+      label.append(element('span', 'product-name', p.name), element('small', '', price));
       const status = p.available ? `${p.stock_quantity} em estoque` : p.status === 'discontinued' ? 'Descontinuado' : p.status === 'coming_soon' ? 'Em lançamento' : 'Sem estoque';
       card.append(label, element('span', p.available ? 'ok' : 'ok unavailable', status));
       bubble.append(card);

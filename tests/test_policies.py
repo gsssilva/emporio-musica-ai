@@ -78,3 +78,9 @@ class PolicyTests(unittest.TestCase):
         index_policies(PDF, self.database)
         with closing(sqlite3.connect(self.database)) as connection:
             self.assertEqual(connection.execute("SELECT count(*) FROM chunks").fetchone()[0], 29)
+
+    def test_complaint_paraphrases_retrieve_escalation_instead_of_only_warranty(self):
+        for question in ["Meu instrumento veio errado. Como resolvo?", "Estou insatisfeito com a compra, como proceder?", "Quero reclamar do atendimento"]:
+            ids = {source["section"] for source in self.search.search(question)["sources"]}
+            self.assertIn("7.3", ids, question)
+            self.assertIn("7.2", ids, question)
