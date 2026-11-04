@@ -48,8 +48,7 @@
     $('t').disabled = disabled;
     $('s').disabled = disabled;
     chips.forEach(b => b.disabled = disabled);
-    $('nc').disabled = busy || !state.token;
-    $('rb').disabled = busy;
+    $('rb').disabled = busy || !state.token;
     $('cy').disabled = busy;
     $('cn').disabled = busy;
     $('notice-action').disabled = busy;
@@ -198,13 +197,13 @@
       waiting.remove();
       if (error.status === 401 || error.status === 403) {
         // Never replay a message automatically after changing server-side history.
-        state = {token: null, items: []}; save(); renderConversation(); $('rs').hidden = true;
+        state = {token: null, items: []}; save(); renderConversation(); $('rn').textContent = 'Conversa atual';
         try {
           await createSession();
           notice('A sessão expirou ou não é mais válida. Criei uma nova conversa; o histórico anterior não está disponível nesta sessão.', 'Reenviar última mensagem', () => send(retryMessage));
         } catch (_) { notice('A sessão expirou e não foi possível criar outra. Verifique o serviço local.', 'Verificar novamente', reconnect); }
       } else if (error.status === 409 || error.status === 429) {
-        if (error.status === 429 && /limite/i.test(error.message)) notice('O limite desta sessão foi atingido. Use Nova conversa para continuar.', 'Nova conversa', () => $('nc').click());
+        if (error.status === 429 && /limite/i.test(error.message)) notice('O limite desta sessão foi atingido. Use Nova conversa para continuar.', 'Nova conversa', () => $('rb').click());
         else notice('O atendimento está ocupado. Aguarde alguns instantes antes de tentar novamente.', 'Reenviar última mensagem', () => send(retryMessage, true));
       } else {
         if (!error.status) { healthy = false; $('health').textContent = 'Conexão interrompida'; $('dot').classList.add('off'); }
@@ -222,19 +221,18 @@
       }
       state = {token: null, items: []}; retryMessage = '';
       try { sessionStorage.removeItem(KEY); } catch (_) { storageAvailable = false; }
-      renderConversation(); $('cf').hidden = true; $('rs').hidden = true;
+      renderConversation(); $('cf').hidden = true; $('rn').textContent = 'Conversa atual';
       await createSession(); await health();
       notice(healthy ? 'Nova conversa iniciada.' : 'Histórico excluído. Inicie o modelo local para conversar.', healthy ? null : 'Verificar novamente', healthy ? null : reconnect);
     } catch (_) { notice('Não foi possível concluir a exclusão ou criar uma nova sessão. Verifique o serviço e tente novamente.', 'Verificar novamente', reconnect); }
-    finally { busy = false; controls(); $('nc').focus(); }
+    finally { busy = false; controls(); $('rb').focus(); }
   }
   $('f').addEventListener('submit', e => { e.preventDefault(); send(); });
   $('t').addEventListener('input', () => { $('t').style.height = '44px'; $('t').style.height = Math.min(100, Math.max(44, $('t').scrollHeight)) + 'px'; $('t').style.overflowY = $('t').scrollHeight > 100 ? 'auto' : 'hidden'; });
   $('t').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } });
   chips.forEach(b => b.addEventListener('click', () => send(b.dataset.question || b.textContent)));
-  $('nc').addEventListener('click', () => { if (!busy) { $('cf').hidden = false; $('cy').focus(); } });
-  $('rb').addEventListener('click', () => $('nc').click());
-  $('cn').addEventListener('click', () => { $('cf').hidden = true; $('nc').focus(); });
+  $('rb').addEventListener('click', () => { if (!busy) { $('cf').hidden = false; $('cy').focus(); } });
+  $('cn').addEventListener('click', () => { $('cf').hidden = true; $('rb').focus(); });
   $('cy').addEventListener('click', resetConversation);
   restore(); renderConversation();
   document.fonts?.ready.then(scrollBottom);

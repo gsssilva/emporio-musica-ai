@@ -31,10 +31,9 @@
     <div class="chead">
       <div class="av" aria-hidden="true">♪</div>
       <div class="heading">Assistente Empório da Música<small role="status"><span class="dot off" id="dot" aria-hidden="true"></span><span id="health">Verificando serviço local…</span></small></div>
-      <button class="newc" id="nc" type="button" aria-label="Nova conversa" title="Nova conversa" disabled>+</button>
     </div>
-    <div class="strip" id="rs" hidden><span id="rn"></span><span class="go"><button id="rb" type="button">Nova conversa</button></span></div>
-    <div class="strip" id="cf" hidden><span>Apagar esta conversa e o histórico?</span><span class="go"><button id="cy" type="button">Apagar</button><button id="cn" type="button">Cancelar</button></span></div>
+    <div class="strip" id="rs"><span id="rn">Conversa atual</span><span class="go"><button id="rb" type="button" disabled>Nova conversa</button></span></div>
+    <div class="strip confirmation" id="cf" role="alert" hidden><span><strong>Iniciar uma nova conversa?</strong><br>O histórico atual será apagado.</span><span class="go"><button id="cy" type="button">Apagar e iniciar</button><button id="cn" type="button">Cancelar</button></span></div>
     <div class="status-box" id="notice" role="status" aria-live="polite" hidden><div id="notice-text"></div><button id="notice-action" type="button" hidden></button></div>
     <div class="msgs" id="msgs" role="log" aria-label="Mensagens da conversa" aria-live="polite" aria-relevant="additions text"><div class="day">Hoje</div></div>
     <div class="chips" aria-label="Perguntas sugeridas">

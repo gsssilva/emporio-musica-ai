@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import sqlite3
+import hashlib
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from emporio_ai.commerce import PaymentRuleError
@@ -55,7 +56,12 @@ def create_app(database: Path | None = None, *, agent=None, sessions=None) -> Fa
 
     @app.get("/", include_in_schema=False)
     def home():
-        return FileResponse(Path(__file__).parent / "web" / "chat.html")
+        web = Path(__file__).parent / "web"
+        html = (web / "chat.html").read_text(encoding="utf-8")
+        for name in ("chat.css", "chat.js"):
+            version = hashlib.sha256((web / name).read_bytes()).hexdigest()[:12]
+            html = html.replace(f'"/assets/{name}"', f'"/assets/{name}?v={version}"')
+        return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
     @app.get("/catalogo", include_in_schema=False)
     def catalog_preview():

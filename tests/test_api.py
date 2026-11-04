@@ -34,8 +34,8 @@ class ApiTests(unittest.TestCase):
 
     def test_chat_shell_assets_and_docs_are_served_together(self):
         shell = self.client.get("/").text
-        self.assertIn('src="/assets/chat.js"', shell)
-        self.assertIn('href="/assets/chat.css"', shell)
+        self.assertRegex(shell, r'src="/assets/chat\.js\?v=[a-f0-9]{12}"')
+        self.assertRegex(shell, r'href="/assets/chat\.css\?v=[a-f0-9]{12}"')
         self.assertNotIn('fonts.googleapis.com', shell)
         for asset in ['chat.js', 'chat.css', 'fonts/oswald-500.ttf', 'fonts/oswald-600.ttf', 'fonts/permanent-marker.ttf']:
             response = self.client.get('/assets/' + asset)

@@ -69,7 +69,7 @@ test('suppresses duplicate submissions while a request is pending', async () => 
   f.send('first'); f.send('second');
   await until(() => release);
   assert.equal(f.calls.filter(c => c.url === '/chat').length, 1);
-  assert.equal(f.get('nc').disabled, true);
+  assert.equal(f.get('rb').disabled, true);
   release({data: answer}); await until(() => !f.get('s').disabled);
 });
 test('restores token, displayed messages and last trace without creating another session', async () => {
@@ -103,8 +103,8 @@ test('session limit offers New conversation rather than another failing send', a
 });
 test('new conversation cancels locally or deletes the old session before creating another', async () => {
   const f = fixture(); await boot(f); f.send('old question'); await until(() => f.get('msgs').textContent.includes(answer.answer));
-  f.get('nc').click(); f.get('cn').click(); assert.equal(f.calls.filter(c => c.method === 'DELETE').length, 0);
-  f.get('nc').click(); f.get('cy').click(); await until(() => f.calls.filter(c => c.url === '/sessions').length === 2 && !f.get('s').disabled);
+  f.get('rb').click(); f.get('cn').click(); assert.equal(f.calls.filter(c => c.method === 'DELETE').length, 0);
+  f.get('rb').click(); f.get('cy').click(); await until(() => f.calls.filter(c => c.url === '/sessions').length === 2 && !f.get('s').disabled);
   const urls = f.calls.map(c => c.url);
   assert.ok(urls.lastIndexOf('/sessions/current') < urls.lastIndexOf('/sessions'));
   assert.equal(saved(f).items.length, 0);
@@ -112,7 +112,7 @@ test('new conversation cancels locally or deletes the old session before creatin
 });
 test('failed deletion preserves current conversation and does not report success', async () => {
   const f = fixture({deleting: 503}); await boot(f); f.send('keep me'); await until(() => f.get('msgs').textContent.includes(answer.answer));
-  f.get('nc').click(); f.get('cy').click(); await until(() => f.get('notice-text').textContent.includes('exclusão'));
+  f.get('rb').click(); f.get('cy').click(); await until(() => f.get('notice-text').textContent.includes('exclusão'));
   assert.equal(saved(f).items.length, 2);
   assert.equal(f.calls.filter(c => c.url === '/sessions').length, 1);
 });

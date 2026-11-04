@@ -4,7 +4,7 @@
 
 O chat em `/` segue o HTML e o print fornecidos pelo candidato: tema escuro, dourado e laranja, duas colunas no desktop e adaptação para tela pequena. Na integração, o candidato ajustou a grade para `grid-template-columns: 1fr 50%`, ampliando o espaço do chat. HTML, CSS e JavaScript são puros e servidos pelo FastAPI na mesma origem das APIs. O protótipo original continha mensagens e preços simulados; esses dados foram removidos. A saudação inicial é estática e não afirma fatos comerciais.
 
-O nome da loja usa Permanent Marker, e títulos usam Oswald. Os arquivos tipográficos são servidos localmente em `/assets/fonts`, com as licenças Apache 2.0 e SIL Open Font License junto aos arquivos. Foram obtidos do Google Fonts e do repositório oficial `google/fonts`. Não há chamada a Google Fonts durante o atendimento nem envio das mensagens para um serviço de layout.
+O nome da loja usa Permanent Marker, e títulos usam Oswald. Os arquivos tipográficos são servidos localmente em `/assets/fonts`, com as licenças Apache 2.0 e SIL Open Font License junto aos arquivos. Foram obtidos do Google Fonts e do repositório oficial `google/fonts`. Não há chamada a Google Fonts durante o atendimento nem envio das mensagens para um serviço de layout. O HTML recebe `Cache-Control: no-store` e as URLs de CSS/JavaScript incluem o hash do conteúdo para evitar carregar versões antigas após uma atualização.
 
 ## Sessão e histórico
 
@@ -12,7 +12,7 @@ Ao abrir a página, o cliente verifica `/chat/health` e cria uma sessão em `POS
 
 Recarregar a mesma aba restaura os itens locais e a trilha da última resposta, com uma faixa indicando a retomada. Esse estado visual não comprova que a sessão do servidor ainda esteja válida; uma rejeição 401/403 inicia outra sessão e avisa que o histórico anterior não está disponível nela. A última mensagem só é reenviada por ação explícita do usuário.
 
-O botão **+** abre uma confirmação inline. Cancelar preserva a conversa. Apagar chama `DELETE /sessions/current` antes de limpar o estado local e criar outra sessão. Uma falha de exclusão não é apresentada como sucesso e mantém o histórico atual na tela. Fechar a aba encerra o armazenamento da interface; no servidor, o histórico segue a expiração de 24 horas. A UI não oferece seleção de clientes nem autenticação de pedidos.
+O botão **Nova conversa**, sempre visível na faixa superior do chat, abre uma confirmação inline destacada com a ação **Apagar e iniciar**. Cancelar preserva a conversa. Apagar chama `DELETE /sessions/current` antes de limpar o estado local e criar outra sessão. Uma falha de exclusão não é apresentada como sucesso e mantém o histórico atual na tela. Fechar a aba encerra o armazenamento da interface; no servidor, o histórico segue a expiração de 24 horas. A UI não oferece seleção de clientes nem autenticação de pedidos.
 
 ## Envio e apresentação das respostas
 
@@ -46,7 +46,7 @@ Na raiz, com modelo e API iniciados conforme o README:
 3. Expanda as fontes e compare a trilha com a última resposta.
 4. Faça uma pergunta de acompanhamento; recarregue para verificar a retomada.
 5. Teste Shift+Enter, envio com Enter e cópia.
-6. Para uma conversa descartável de teste, use **+**, confirme a exclusão e verifique a nova saudação.
+6. Para uma conversa descartável de teste, use **Nova conversa**, confirme a exclusão e verifique a nova saudação.
 
 Os testes Python verificam o shell e os assets servidos junto da API. Dez testes JavaScript, com DOM e HTTP substitutos explicitamente identificados, verificam sessão automática, evidência como texto, concorrência, retomada, expiração, ocupação, limite de turnos, cancelamento/exclusão, falha de exclusão e armazenamento bloqueado. São testes do cliente; não medem qualidade do LLM nem substituem a inspeção no navegador.
 
