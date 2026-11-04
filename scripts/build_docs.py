@@ -28,7 +28,7 @@ from reportlab.platypus.tableofcontents import TableOfContents
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCUMENTS = ["README.md", "docs/arquitetura.md", "docs/ingestao.md", "docs/consultas.md",
-             "docs/retrieval.md", "docs/agente.md", "docs/api-local.md", "docs/avaliacao.md",
+             "docs/retrieval.md", "docs/agente.md", "docs/api-local.md", "docs/interface.md", "docs/avaliacao.md",
              "docs/entendimento.md", "examples/01-catalogo.md", "examples/02-promocao-pix.md",
              "examples/03-devolucao.md", "examples/04-pedido-demo.md", "examples/05-fora-de-escopo.md"]
 GREEN, INK, MUTED = colors.HexColor("#173e32"), colors.HexColor("#20322b"), colors.HexColor("#5a6861")

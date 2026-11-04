@@ -5,7 +5,7 @@ O sistema implementa um agente híbrido: ferramentas para fatos estruturados e r
 ## Fluxo implementado
 
 ```text
-Cliente HTTP / Swagger
+Chat HTML / cliente HTTP / Swagger
   -> FastAPI: validação e token de sessão
   -> histórico limitado + contexto de cliente definido no servidor
   -> recuperação preventiva de políticas quando pertinente
@@ -21,7 +21,7 @@ Cliente HTTP / Swagger
 
 ## Python e API documentada
 
-FastAPI fornece validação e OpenAPI; `/docs` demonstra criação de sessão e atendimento sem um frontend extenso. O enunciado admite alternativas de interface e não exige simulação de e-commerce. `/catalogo` é uma visualização secundária já existente. O domínio funciona sem a interface HTTP, como mostra o avaliador de cenários.
+FastAPI fornece validação e OpenAPI. Um chat em HTML, CSS e JavaScript, servido em `/`, automatiza a sessão e exibe mensagens, evidências e trilha; `/docs` permite inspecionar o contrato HTTP. O enunciado admite alternativas de interface e não exige simulação de e-commerce. `/catalogo` é uma visualização secundária já existente. Fontes tipográficas são locais e o navegador não interpreta HTML nas respostas do modelo. O domínio funciona sem a interface HTTP, como mostra o avaliador de cenários.
 
 ## SQLite e regras determinísticas
 

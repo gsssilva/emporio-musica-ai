@@ -4,7 +4,9 @@
 
 A validação separa três níveis: testes determinísticos de domínio e protocolo; cenários com o modelo real; revisão das mensagens e suas evidências. Um teste com provedor simulado não mede qualidade do LLM. Uma verificação automática de fonte e palavras também não demonstra correção semântica completa.
 
-Foram executados 90 testes automatizados com `unittest`, cobrindo ingestão e rollback, valores financeiros, status e estoque, promoção inativa, acesso a pedidos, retrieval, sessões, HTTP, limites, falhas de provedor e guardas. Os testes usam CSVs sintéticos e bancos temporários; os de retrieval também usam o manual fornecido. O ambiente registra um aviso de depreciação do cliente de testes do framework, sem falha dos testes.
+Foram executados 91 testes automatizados com `unittest`, cobrindo ingestão e rollback, valores financeiros, status e estoque, promoção inativa, acesso a pedidos, retrieval, sessões, HTTP, limites, falhas de provedor e guardas. A verificação adicional da interface cobre o carregamento do shell, dos arquivos estáticos e das fontes locais, mantendo o Swagger acessível. A avaliação de 13 cenários abaixo é a rodada registrada antes dessa evolução visual; não foi apresentada como nova medição do modelo.
+
+Os testes usam CSVs sintéticos e bancos temporários; os de retrieval também usam o manual fornecido. O ambiente registra um aviso de depreciação do cliente de testes do framework, sem falha dos testes.
 
 `scripts/evaluate_agent.py` executa os 13 cenários de `evals/cases.json` com o provedor real. Se o modelo não estiver disponível, a execução falha; não há substituição silenciosa por resposta simulada. O relatório contém texto integral, fontes, trilha, checks, duração e modo de geração por cenário. Os cinco exemplos são extraídos dessa execução.
 

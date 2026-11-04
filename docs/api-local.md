@@ -8,7 +8,11 @@ Na raiz do projeto, após instalar dependências, importar os CSVs, indexar o ma
 .\.venv\Scripts\python.exe -m uvicorn emporio_ai.api:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-`/` redireciona para `/docs`, interface principal de demonstração. O bind limita acesso ao computador local. A aplicação é um protótipo sem autenticação de clientes de produção.
+`/` serve o chat visual integrado; `/docs` mantém o Swagger para demonstração técnica do contrato HTTP. O bind limita acesso ao computador local. A aplicação é um protótipo sem autenticação de clientes de produção.
+
+## Interface visual
+
+O chat cria a sessão automaticamente, mostra as fontes realmente retornadas e a trilha da última resposta. CSS, JavaScript e fontes são servidos em `/assets`, na mesma origem da API. Veja [comportamento, limites e testes da interface](interface.md).
 
 ## Atendimento
 

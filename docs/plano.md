@@ -4,7 +4,7 @@
 
 O histórico do Git registra implementação progressiva de ingestão, consultas comerciais, API local, retrieval, agente, sessões e correções orientadas por avaliação real. Commits foram executados com autorização do candidato, sem force-push, exclusivamente no repositório `gsssilva/emporio-musica-ai`.
 
-O recorte prioriza o agente Python, dados e políticas do desafio. A interface principal é Swagger. A visualização de catálogo é auxiliar; não foi expandida para uma loja virtual. A restrição de custo levou à inferência local com Ollama, sem API paga.
+O recorte prioriza o agente Python, dados e políticas do desafio. A interface principal é o chat visual, com Swagger para inspeção técnica. A visualização de catálogo é auxiliar; não foi expandida para uma loja virtual. A restrição de custo levou à inferência local com Ollama, sem API paga.
 
 ## Evidências de conclusão
 
@@ -12,7 +12,7 @@ O recorte prioriza o agente Python, dados e políticas do desafio. A interface p
 - Consultas somente de leitura, descontos e parcelamento calculados no código.
 - Recuperação do manual por seção e página, com hash de origem.
 - Agente com cinco ferramentas, limites, sessões e bloqueio de pedidos sem contexto autorizado.
-- 90 testes automatizados e rodada de 13 cenários com modelo real, documentada separadamente.
+- 91 testes automatizados e rodada de 13 cenários com modelo real, documentada separadamente.
 - Cinco conversas extraídas da avaliação; identidades simuladas identificadas.
 - README e documentação técnica como fontes do gerador de PDF.
 

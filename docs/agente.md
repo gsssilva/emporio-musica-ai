@@ -57,7 +57,7 @@ Esse mecanismo isola conversas, mas **não autentica um cliente da loja**. Por p
 - `DELETE /sessions/current`: apaga o histórico da conversa autorizada.
 - `GET /chat/health`: verifica a disponibilidade do modelo instalado, sem executar inferência.
 
-`/docs` é a interface principal de demonstração da API. A antiga vitrine fica em `/catalogo` como recurso secundário, sem novos investimentos de interface.
+`/` apresenta o chat visual e cria a sessão automaticamente; `/docs` mantém a demonstração do contrato HTTP. A vitrine fica em `/catalogo` como recurso secundário. O frontend não escolhe identidade de cliente e não altera as ferramentas do agente.
 
 ## Limitações de fundamentação
 

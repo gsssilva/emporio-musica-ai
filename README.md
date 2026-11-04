@@ -1,6 +1,6 @@
 # Empório da Música - Assistente de atendimento
 
-Agente em Python para o desafio técnico de AI Engineer da Artefact. Consulta o catálogo da loja fictícia, calcula condições comerciais e recupera políticas com referências ao documento original. A demonstração principal é uma API FastAPI com Swagger, suficiente para exercitar o agente sem construir uma loja virtual.
+Agente em Python para o desafio técnico de AI Engineer da Artefact. Consulta o catálogo da loja fictícia, calcula condições comerciais e recupera políticas com referências ao documento original. A demonstração principal é um chat web servido pela API FastAPI; o Swagger permanece disponível para inspecionar o contrato HTTP.
 
 **Execução local gratuita:** Ollama com `qwen3:8b`, SQLite e Python. Sem chave de API, assinatura, cobrança por tokens ou fallback pago. O computador fornece memória, processamento e energia; o download inicial requer internet.
 
@@ -11,10 +11,10 @@ Agente em Python para o desafio técnico de AI Engineer da Artefact. Consulta o 
 - Recuperação lexical de 29 trechos do manual, com seção e páginas.
 - Agente com limites de execução, fontes efetivamente consultadas e guardas de negócio explícitas.
 - Sessões isoladas, expiração, exclusão e bloqueio de pedidos sem contexto autorizado.
-- 90 testes automatizados e avaliação separada de 13 cenários com o modelo local real.
+- 91 testes Python, 10 testes do cliente JavaScript e avaliação separada de 13 cenários com o modelo local real.
 - Cinco conversas executadas, documentação técnica e geração reproduzível de PDF.
 
-O enunciado permite diferentes interfaces. A escolha foi API documentada; `/catalogo` preserva uma visualização auxiliar já implementada. Não há integração de WhatsApp, ERP, transportadora, checkout ou execução de reembolsos.
+O enunciado permite diferentes interfaces. A escolha foi uma interface de chat simples integrada à API; `/docs` permite inspeção técnica e `/catalogo` preserva uma visualização auxiliar. Não há integração de WhatsApp, ERP, transportadora, checkout ou execução de reembolsos.
 
 ## Decisões técnicas e justificativas
 
@@ -36,9 +36,9 @@ Considerei a contrapartida dessa escolha: download dos pesos, consumo de memóri
 
 ### Interface de interação
 
-Escolhi uma API FastAPI com Swagger como interface principal porque o enunciado permite API e prioriza o agente funcionando corretamente. Assim, o avaliador pode criar uma sessão, enviar mensagens e inspecionar respostas, fontes e ferramentas pela documentação interativa. Essa opção concentra o trabalho no atendimento e torna a integração HTTP verificável sem exigir um frontend extenso.
+Escolhi uma interface de chat em HTML, CSS e JavaScript puros, servida pelo mesmo FastAPI, para facilitar o envio de mensagens sem copiar tokens de sessão. Adotei o protótipo visual fornecido como referência e integrei as respostas e fontes reais do agente, mantendo o foco em uma UI simples permitida pelo desafio. Servir frontend e API na mesma origem dispensa configuração de CORS; as fontes tipográficas também são locais.
 
-Mantive a visualização de catálogo já implementada como recurso auxiliar em `/catalogo`. Uma interface visual de chat está em discussão e ainda não faz parte da implementação entregue nesta revisão. A API permanece utilizável independentemente dessa evolução.
+Mantive o Swagger em `/docs` para inspecionar o contrato HTTP, as ferramentas e os metadados, e a visualização de catálogo como recurso auxiliar em `/catalogo`. O chat expõe fontes expansíveis, trilha real e detalhes técnicos recolhidos. A aparência não altera as regras ou a autorização do agente.
 
 ### Persistência do histórico de conversa
 
@@ -93,7 +93,11 @@ Se estiver usando o pacote portátil sem Ollama no PATH, substitua `ollama` por 
 .\.venv\Scripts\python.exe -m uvicorn emporio_ai.api:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Abra [a documentação interativa local](http://127.0.0.1:8000/docs):
+Abra [o chat local](http://127.0.0.1:8000/): a sessão é criada automaticamente. Escreva uma pergunta ou escolha uma sugestão; Enter envia e Shift+Enter insere uma nova linha. Consulte as fontes abaixo da resposta e os bastidores na coluna lateral. O botão **+** inicia uma nova conversa após confirmação da exclusão. Não é necessário copiar tokens.
+
+A aba mantém token e mensagens em `sessionStorage` para retomar após recarregar. Fechar a aba encerra essa persistência local; o histórico do servidor segue sua expiração de 24 horas. Isso não autentica clientes da loja. Veja [interface e tratamento de falhas](docs/interface.md).
+
+Para testar o contrato HTTP, abra [a documentação interativa](http://127.0.0.1:8000/docs):
 
 1. Execute `POST /sessions`, sem corpo ou com `{}`.
 2. Copie o `session_id` retornado para **Authorize** como Bearer.
@@ -113,7 +117,7 @@ Esse token é criado pelo próprio sistema para isolar a conversa, sem qualquer 
 .\.venv\Scripts\python.exe scripts/evaluate_agent.py --output runtime/evaluation.json
 ```
 
-Os 90 testes verificam regras comerciais, ingestão, retrieval, autorização, sessões, falhas e protocolo do agente com provedor simulado. A avaliação final usa Ollama real; não substitui resultados por simulação quando o modelo falha. O [relatório versionado](evals/results.json) contém modelo, digest, prompt, parâmetros, revisão, tempo, fontes e verificações por caso. Os checks automáticos e a revisão das respostas têm limites descritos em [avaliação](docs/avaliacao.md); não representam garantia de precisão em perguntas novas.
+Os 91 testes Python verificam regras comerciais, ingestão, retrieval, autorização, sessões, falhas, assets da interface e protocolo do agente com provedor simulado. Os 10 testes adicionais do cliente podem ser executados com `node --test tests/test_chat_ui.cjs`; usam DOM e HTTP substitutos e não exigem instalar pacotes npm. A avaliação final usa Ollama real; não substitui resultados por simulação quando o modelo falha. O [relatório versionado](evals/results.json) contém modelo, digest, prompt, parâmetros, revisão, tempo, fontes e verificações por caso. Os checks automáticos e a revisão das respostas têm limites descritos em [avaliação](docs/avaliacao.md); não representam garantia de precisão em perguntas novas.
 
 ### Conversas executadas
 
@@ -145,6 +149,7 @@ HTTP / Swagger -> sessão -> agente -> Ollama local
 - [Recuperação das políticas](docs/retrieval.md)
 - [Agente, privacidade e sessões](docs/agente.md)
 - [Contrato HTTP e demonstração](docs/api-local.md)
+- [Interface visual, sessão e testes](docs/interface.md)
 - [Avaliação e limitações](docs/avaliacao.md)
 - [Entendimento dos requisitos e ambiguidades](docs/entendimento.md)
 - [Auditoria agregada dos CSVs](docs/auditoria-dados.json)
@@ -172,6 +177,6 @@ A API é um protótipo local, sem autenticação de clientes de produção, TLS,
 
 ## Uso de assistência de IA e histórico
 
-O Codex auxiliou na leitura dos materiais, auditoria, decisões, implementação, testes, avaliação das respostas, correções e documentação. Gabriel Silva definiu prioridades, escopo e restrição de custo, e autorizou commits e pushes. O candidato deve revisar o código e compreender as decisões para defendê-las na avaliação. As conversas de exemplo foram executadas com o modelo real; os testes com provedor simulado estão identificados separadamente.
+Utilizei o Codex na leitura dos materiais, auditoria, decisões, implementação, testes, avaliação das respostas, correções e documentação. Para a interface, forneci um protótipo HTML e um print produzidos com auxílio de outra ferramenta de IA de layouts; o Codex integrou esse visual à API e substituiu as respostas simuladas pelo agente real. Gabriel Silva definiu prioridades, escopo e restrição de custo, e autorizou commits e pushes. O candidato deve revisar o código e compreender as decisões para defendê-las na avaliação. As conversas de exemplo foram executadas com o modelo real; os testes com provedor simulado estão identificados separadamente.
 
 O histórico registra o desenvolvimento progressivo e suas correções. Não foi usado force-push. A entrega solicitada pelo enunciado é o link do repositório; o PDF é um complemento pedido pelo candidato. Prazo informado: terça-feira, 03/11/2026, com horário a conferir no e-mail da seleção. O envio final é realizado pelo candidato.
